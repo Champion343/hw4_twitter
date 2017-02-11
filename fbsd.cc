@@ -1,22 +1,60 @@
 #include <iostream>
 #include <memory>
 #include <string>
-
+#include <fstream>
 #include <grpc++/grpc++.h>
-
+#include <vector>
 #include "fpb.grpc.pb.h"
 
 using grpc::Server;
 using grpc::ServerBuilder;
 using grpc::ServerContext;
 using grpc::Status;
-using fpb::Request;
-using fpb::Reply;
-using fpb::ListReply;
-using fpb::Message;
+using fbp::Request;
+using fbp::Reply;
+using fbp::ListReply;
+using fbp::Message;
 using fbp::CRMasterServer;
+using namespace std;
 
-// Logic and data behind the server's behavior.
+//find exsiting name
+int findName(string username, vector<string>* list)
+{
+	for(int i=0; i < (int)list->size(); i++)
+		if(username == list->[i])
+			return i;
+	return -1;
+}
+
+struct Room
+{
+	//name of room and followers
+	string username;
+	vector<string> followers;
+	
+	Room(string name) : username(name) {}
+	
+	//new friend
+	bool join(string follower)
+	{
+		if(findName(follower, &followers) >= 0)
+			return false;
+		followers.push_back(follower);
+		return true;
+	}
+	
+	//unfriended
+	bool leave(string follower)
+	{
+		int index = findName(follower, &followers);
+		if( index < 0)
+			return false;
+		followers.erase(followers.begin()+index-1);
+		return true;
+	}
+};
+
+// Login
 class FBServiceImpl final : public CRMasterServer::Service {
   Status Login(ServerContext* context, const Request* request,
                   Reply* reply) override {
@@ -25,44 +63,65 @@ class FBServiceImpl final : public CRMasterServer::Service {
   }
 };
 
-// Logic and data behind the server's behavior.
+//Global: all chatrooms
+vector<Room> chatRooms;
+
+//find exsiting chatroom
+int findName(string username, vector<Room>* list)
+{
+	for(int i=0; i < (int)list->size(); i++)
+		if(username == list->[i].username)
+			return i;
+	return -1;
+}
+
+//create chat room
+bool createChatroom(string username)
+{
+	if(findName(username, &chatRooms))
+		return false;
+	Room newRoom(username);
+	chatRooms.push_back(newRoom);
+}
+
+// List
 class FBServiceImpl final : public CRMasterServer::Service {
   Status List(ServerContext* context, const Request* request,
                   ListReply* reply) override {
-    getList(request->username);
+    //getList(request->username);
     return Status::OK;
   }
 };
 
-// Logic and data behind the server's behavior.
+// Join
 class FBServiceImpl final : public CRMasterServer::Service {
   Status Join(ServerContext* context, const Request* request,
                   Reply* reply) override {
-    joinChatroom(request->username, request->arguments.(0));
+    //joinChatroom(request->username, request->arguments.(0));
     return Status::OK;
   }
 };
 
-// Logic and data behind the server's behavior.
+// Leave
 class FBServiceImpl final : public CRMasterServer::Service {
   Status Leave(ServerContext* context, const Request* request,
                   Reply* reply) override {
-    leaveChatroom(request->username, request->arguments.(0));
+    //leaveChatroom(request->username, request->arguments.(0));
     return Status::OK;
   }
 };
 
-// Logic and data behind the server's behavior.
+// Chat
 class FBServiceImpl final : public CRMasterServer::Service {
   Status Chat(ServerContext* context, const Message* msg,
                   Message* reply) override {
-    bistreamMsg(request->username, request->arguments.(0));
+    //bistreamMsg(request->username, request->arguments.(0));
     return Status::OK;
   }
 };
 
 void RunServer() {
-  std::string server_address("0.0.0.0:50051");
+  string server_address("0.0.0.0:50051");
   FBServiceImpl service;
 
   ServerBuilder builder;
@@ -72,8 +131,8 @@ void RunServer() {
   // clients. In this case it corresponds to an *synchronous* service.
   builder.RegisterService(&service);
   // Finally assemble the server.
-  std::unique_ptr<Server> server(builder.BuildAndStart());
-  std::cout << "Server listening on " << server_address << std::endl;
+  unique_ptr<Server> server(builder.BuildAndStart());
+  cout << "Server listening on " << server_address << endl;
 
   // Wait for the server to shutdown. Note that some other thread must be
   // responsible for shutting down the server for this call to ever return.
