@@ -4,13 +4,12 @@
 #include <fstream>
 #include <grpc++/grpc++.h>
 #include <vector>
-#include "fpb.grpc.pb.h"
+#include "fbp.grpc.pb.h"
 
 using grpc::Server;
 using grpc::ServerBuilder;
 using grpc::ServerContext;
 using grpc::Status;
-using fbp::Request;
 using fbp::Reply;
 using fbp::ListReply;
 using fbp::Message;
@@ -21,7 +20,7 @@ using namespace std;
 int findName(string username, vector<string>* list)
 {
 	for(int i=0; i < (int)list->size(); i++)
-		if(username == list->[i])
+		if(username == list->at(i))
 			return i;
 	return -1;
 }
@@ -54,15 +53,6 @@ struct Room
 	}
 };
 
-// Login
-class FBServiceImpl final : public CRMasterServer::Service {
-  Status Login(ServerContext* context, const Request* request,
-                  Reply* reply) override {
-    createChatroom(request->username);
-    return Status::OK;
-  }
-};
-
 //Global: all chatrooms
 vector<Room> chatRooms;
 
@@ -70,7 +60,7 @@ vector<Room> chatRooms;
 int findName(string username, vector<Room>* list)
 {
 	for(int i=0; i < (int)list->size(); i++)
-		if(username == list->[i].username)
+		if(username == list->at(i).username)
 			return i;
 	return -1;
 }
@@ -84,40 +74,43 @@ bool createChatroom(string username)
 	chatRooms.push_back(newRoom);
 }
 
-// List
+//overrides of proto
 class FBServiceImpl final : public CRMasterServer::Service {
-  Status List(ServerContext* context, const Request* request,
+	// Login
+  Status Login(ServerContext* context, const Message* request,
+                  Reply* reply) override {
+    createChatroom(request->username);
+    return Status::OK;
+  }
+  
+  // List
+  Status List(ServerContext* context, const Message* request,
                   ListReply* reply) override {
     //getList(request->username);
     return Status::OK;
   }
-};
 
 // Join
-class FBServiceImpl final : public CRMasterServer::Service {
-  Status Join(ServerContext* context, const Request* request,
+  Status Join(ServerContext* context, const Message* request,
                   Reply* reply) override {
     //joinChatroom(request->username, request->arguments.(0));
     return Status::OK;
   }
-};
 
 // Leave
-class FBServiceImpl final : public CRMasterServer::Service {
-  Status Leave(ServerContext* context, const Request* request,
+  Status Leave(ServerContext* context, const Message* request,
                   Reply* reply) override {
     //leaveChatroom(request->username, request->arguments.(0));
     return Status::OK;
   }
-};
 
 // Chat
-class FBServiceImpl final : public CRMasterServer::Service {
   Status Chat(ServerContext* context, const Message* msg,
                   Message* reply) override {
     //bistreamMsg(request->username, request->arguments.(0));
     return Status::OK;
   }
+  
 };
 
 void RunServer() {
