@@ -68,10 +68,12 @@ int findName(string username, vector<Room>* list)
 //create chat room
 bool createChatroom(string username)
 {
-	if(findName(username, &chatRooms))
+	if(findName(username, &chatRooms) >= 0)
 		return false;
 	Room newRoom(username);
 	chatRooms.push_back(newRoom);
+	cout << "created room " << username << endl;
+	return true;
 }
 
 //overrides of proto
@@ -79,7 +81,11 @@ class FBServiceImpl final : public CRMasterServer::Service {
 	// Login
   Status Login(ServerContext* context, const Message* request,
                   Reply* reply) override {
-    createChatroom(request->username);
+    if(!createChatroom(request->username()))
+		cout << "service no" << endl;
+	else
+		cout << "service yes" << endl;
+	reply->set_msg("doine");
     return Status::OK;
   }
   
@@ -106,7 +112,7 @@ class FBServiceImpl final : public CRMasterServer::Service {
 
 // Chat
   Status Chat(ServerContext* context, const Message* msg,
-                  Message* reply) override {
+                  Message* reply) {
     //bistreamMsg(request->username, request->arguments.(0));
     return Status::OK;
   }
@@ -114,7 +120,7 @@ class FBServiceImpl final : public CRMasterServer::Service {
 };
 
 void RunServer() {
-  string server_address("0.0.0.0:50051");
+  string server_address("0.0.0.0:50081");
   FBServiceImpl service;
 
   ServerBuilder builder;
