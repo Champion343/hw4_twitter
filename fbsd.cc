@@ -35,19 +35,28 @@ struct Room
 	vector<string> followers;
 	vector<string> following;
 	ServerReaderWriter<Message,Message>* stream;
-	fstream file;
+	fstream* file;
 	streampos position;
+	//int position;
 	vector<string> joinTime;
 	time_t now;
 	
 	Room()
 	{
 		position = 0;
+		file = new fstream;
 	}
 	
 	Room(string name) : username(name) 
 	{
 		position = 0;
+		file = new fstream;
+	}
+	
+	~Room()
+	{
+		file->close();
+		delete file;
 	}
 	
 	//new following
@@ -278,12 +287,12 @@ class FBServiceImpl final : public CRMasterServer::Service
 		for(int j=0; j < (int)chatRooms[index].following.size(); j++)
 		{
 			int foll = findName(chatRooms[index].following[j], &chatRooms);
-			chatRooms[foll].file.open(user + ".txt");
-			while(getline(chatRooms[foll].file, line))
+			chatRooms[foll].file->open(user + ".txt");
+			while(getline(*(chatRooms[foll].file), line))
 			{
 				placeIn(line, &recentMsgs, chatRooms[index].joinTime[j]);
 			}
-			chatRooms[foll].file.close();
+			chatRooms[foll].file->close();
 			/*
 			if(chatRooms[foll].position == 0)
 			{
