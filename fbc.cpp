@@ -1,6 +1,7 @@
 #include <iostream>
 #include <memory>
 #include <string>
+#include <thread>
 #include <grpc++/grpc++.h>
 
 #include "fbp.grpc.pb.h"
@@ -122,12 +123,25 @@ class Client {
   void Chat(const std::string& user){
 	ClientContext context;
 	std::shared_ptr<ClientReaderWriter<Message,Message>> stream(stub_->Chat(&context));
-	Message message;
-	message.set_username(user);
-	/*std::thread writer ([stream]){
-		message.msg*/
+	//string text;
+	Message client_message;
+	Message server_message;
+	cout << "Begin Chatting..." << endl;
+	while(1){
+	string text;
+	cin.ignore();
+    getline(cin, text);
+	client_message.set_msg(text);
+	client_message.set_username(user);
+	stream->Write(client_message);
+	stream -> WritesDone();
+	while(stream->Read(&server_message)) {
+		cout << server_message.msg() << endl;
 	}
-  }
+	}
+	Status status = stream->Finish();
+}
+  
  private:
   std::unique_ptr<CRMasterServer::Stub> stub_;
 };
@@ -171,7 +185,7 @@ int main(int argc, char** argv) {
 		std::cout << "Leave: " << reply << std::endl;
 	  }
 	  else if(input == "CHAT"){
-		cout << "Entering CHAT mode..." << endl;
+		client.Chat(client_name);
 	  }
 	  else
 		  cout << "Not a command..." << endl;
