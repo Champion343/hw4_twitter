@@ -57,9 +57,10 @@ struct Room
 	bool unfriend(string person)
 	{
 		int index = findName(person, &following);
+		cout << "unfriend index: " << index << endl;
 		if( index < 0)
 			return false;
-		following.erase(following.begin()+index-1);
+		following.erase(following.begin()+index);
 		return true;
 	}
 	
@@ -67,9 +68,10 @@ struct Room
 	bool unfollowedBy(string person)
 	{
 		int index = findName(person, &followers);
+		cout << "unfollow index: " << index << endl;
 		if( index < 0)
 			return false;
-		followers.erase(followers.begin()+index-1);
+		followers.erase(followers.begin()+index);
 		return true;
 	}
 };
@@ -121,16 +123,27 @@ class FBServiceImpl final : public CRMasterServer::Service
 	override 
 	{
 		//set all rooms
+		//exit(1);
+		cout << "tryna list" << endl;
+		cout << "loop1: " << (int)chatRooms.size() << endl;
 		for(int i=0; i < (int)chatRooms.size(); i++)
-			reply->set_all_roomes(i, chatRooms[i].username);
+		{
+			cout << "adding to listreply all rooms: " << chatRooms[i].username << endl;
+			reply->add_all_roomes(chatRooms[i].username);
+		}
 		//set all rooms joined by user
 		int index = findName(request->username(), &chatRooms);
+		cout << "index: " << index << " loop2: " << (int)chatRooms[index].following.size() << endl;
 		for(int i=0; i < (int)chatRooms[index].following.size(); i++)
-			reply->set_joined_roomes(i, chatRooms[index].following[i]);
+			{
+			cout << "adding to listreply all joined rooms: " << chatRooms[index].following[i] << endl;
+			reply->add_joined_roomes(chatRooms[index].following[i]);
+			reply->get_joined_roomes(chatRooms[index].following[i]);
+			}
 		return Status::OK;
 	}
 
-	// Join
+	// Join(join own room)
 	Status Join(ServerContext* context, const Message* request, Reply* reply) 
 	override 
 	{
@@ -188,14 +201,26 @@ class FBServiceImpl final : public CRMasterServer::Service
 	}
 
 	// Chat
-	///*
 	Status Chat(ServerContext* context, ServerReaderWriter<Message,Message>* stream) 
 	override
 	{
 		//bistreamMsg(request->username, request->arguments.(0));
-		
+		//initial call to chat, setup chat then while loop
+		Message firstMsg;
+		stream->Read(&firstMsg);
+		std::vector<Message> received_msgs;
+    Message note;
+    while (stream->Read(&note)) {
+      for (const Message& n : received_msgs) {
+        if (n.location().latitude() == note.location().latitude() &&
+            n.location().longitude() == note.location().longitude()) {
+          stream->Write(n);
+        }
+      }
+      received_notes.push_back(note);
+    }
 		return Status::OK;
-	}//*/
+	}
   
 };
 
