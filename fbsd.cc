@@ -9,6 +9,7 @@
 using grpc::Server;
 using grpc::ServerBuilder;
 using grpc::ServerContext;
+using grpc::ServerReaderWriter;
 using grpc::Status;
 using fbp::Reply;
 using fbp::ListReply;
@@ -79,9 +80,13 @@ vector<Room> chatRooms;
 //find exsiting chatroom, return index
 int findName(string username, vector<Room>* list)
 {
+	cout << "finding name...";
 	for(int i=0; i < (int)list->size(); i++)
 		if(username == list->at(i).username)
+		{
+			cout << "found" << endl;
 			return i;
+		}
 	return -1;
 }
 
@@ -130,16 +135,26 @@ class FBServiceImpl final : public CRMasterServer::Service
 	override 
 	{
 		//add new friend to user, add user to new friend's followers
+		cout << "tryna join" << endl;
 		int user, joining;
 		user = findName(request->username(), &chatRooms);
 		joining = findName(request->msg(), &chatRooms);
 		if( user < 0 || joining < 0)
+		{
 			reply->set_msg("join fail");
+			cout << "join fail1" << endl;
+		}
 		else if( chatRooms[user].addFriend(request->msg()) &&
 				 chatRooms[joining].addFollower(request->username()) )
+				 {
 					reply->set_msg("join success");
+					cout << "join success" << endl;
+				 }
 		else
+		{
 			reply->set_msg("join fail");
+			cout << "join fail2" << endl;
+		}
 		return Status::OK;
 	}
 
@@ -148,25 +163,39 @@ class FBServiceImpl final : public CRMasterServer::Service
 	override 
 	{
 		//delete person from user's friends, delete user from person's followers
+		cout << request->username() << " tryna leave " << request->msg() << endl;
 		int user, leaving;
 		user = findName(request->username(), &chatRooms);
 		leaving = findName(request->msg(), &chatRooms);
+		cout << "size " << chatRooms.size() << " indexs " << user << "  " << leaving << endl;
 		if( user < 0 || leaving < 0)
+		{
+			cout << "leave fail1" << endl;
 			reply->set_msg("leave fail");
+		}
 		else if( chatRooms[user].unfriend(request->msg()) &&
 				 chatRooms[leaving].unfollowedBy(request->username()) )
+				 {
+			cout << "leave success" << endl;
 					reply->set_msg("leave success");
-		else
+				 }
+		else{
+			cout << "leave fail2" << endl;
 			reply->set_msg("leave fail");
+		}
+		cout << "returning from leave" << endl;
 		return Status::OK;
 	}
 
 	// Chat
-	Status Chat(ServerContext* context, const Message* msg, Message* reply) 
+	///*
+	Status Chat(ServerContext* context, ServerReaderWriter<Message,Message>* stream) 
+	override
 	{
 		//bistreamMsg(request->username, request->arguments.(0));
+		
 		return Status::OK;
-	}
+	}//*/
   
 };
 
