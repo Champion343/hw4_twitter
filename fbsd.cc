@@ -4,6 +4,7 @@
 #include <fstream>
 #include <grpc++/grpc++.h>
 #include <vector>
+#include <deque>
 #include "fbp.grpc.pb.h"
 
 using grpc::Server;
@@ -32,6 +33,10 @@ struct Room
 	string username;
 	vector<string> followers;
 	vector<string> following;
+	ServerReaderWriter<Message,Message>* stream;
+	fstream file;
+	streampos position = 0;
+	vector<string> joinTime;
 	
 	Room(string name) : username(name) {}
 	
@@ -74,10 +79,16 @@ struct Room
 		followers.erase(followers.begin()+index);
 		return true;
 	}
+	
+	void newMsg(string chatMsg)
+	{
+		
+	}
 };
 
 //Global: all chatrooms
 vector<Room> chatRooms;
+vector< ServerReaderWriter<Message,Message>* > Streams;
 
 //find exsiting chatroom, return index
 int findName(string username, vector<Room>* list)
@@ -102,6 +113,8 @@ bool createChatroom(string username)
 	cout << "created room: " << username << endl;
 	return true;
 }
+
+
 
 //overrides of proto
 class FBServiceImpl final : public CRMasterServer::Service 
@@ -143,7 +156,7 @@ class FBServiceImpl final : public CRMasterServer::Service
 		return Status::OK;
 	}
 
-	// Join(join own room)
+	// Join(join own room) take time now, when chat command this is upper bound for time
 	Status Join(ServerContext* context, const Message* request, Reply* reply) 
 	override 
 	{
@@ -208,21 +221,64 @@ class FBServiceImpl final : public CRMasterServer::Service
 		//initial call to chat, setup chat then while loop
 		Message firstMsg;
 		stream->Read(&firstMsg);
+		int index = findName(firstMsg.username, &chatRooms);
+		chatRooms[index].stream = stream;
+		//get last 20 msgs from following
+		//in one loop, find most recent from all followers, save the others, read a new one, compare, etc
+		deque<string> recentMsgs;
+		string line;
+		for(int i=0; i < 20; i++)
+		{
+			for(int j=0; j < (int)chatRooms[index].following.size(); j++)
+			{
+				int foll = findName(chatRooms[index].following[j], &chatRooms);
+				chatRooms[foll].file.open(user + ".txt");
+				if(chatRooms[foll].position == 0)
+				{
+					getline(chatRooms[foll].file, line);
+					chatRooms[foll].position = chatRooms[foll].file.tellg();
+				}
+				else
+				{
+					chatRooms[foll].file.seekg(chatRooms[foll].position);
+					getline(chatRooms[foll].file, line);
+					chatRooms[foll].position = chatRooms[foll].file.tellg();
+				}
+				placeIn(line, &recentMsgs);
+			}
+		}
+		//when post, loop thru followers and stream out
 		std::vector<Message> received_msgs;
-    Message note;
-    while (stream->Read(&note)) {
-      for (const Message& n : received_msgs) {
-        if (n.location().latitude() == note.location().latitude() &&
-            n.location().longitude() == note.location().longitude()) {
-          stream->Write(n);
-        }
-      }
-      received_notes.push_back(note);
-    }
+		Message note;
+		while (stream->Read(&note)) {
+		  for (const Message& n : received_msgs) {
+			if (n.location().latitude() == note.location().latitude() &&
+				n.location().longitude() == note.location().longitude()) {
+			  stream->Write(n);
+			}
+		  }
+		  received_notes.push_back(note);
+		}
 		return Status::OK;
 	}
   
 };
+
+void placeIn(string chatMsg, deque<string>* last20)
+{
+	if(last20->size() == 0)
+	{
+		last20->push_back(chatMsg);
+		return
+	}
+	for(int i=0; i < last20->size(); i++)
+	string sub = chatMsg.substr(line.find(" "));
+	string timeString = chatMsg.substr(line.find(" "), chatMsg.find(" ") - sub.find(" "));
+	string msg = sub.substr(sub.find(" ");
+	cout << "date: " << timeString << endl;
+	deque<string>::iterator it = last20->begin(); 
+	if(
+}
 
 void RunServer() 
 {
