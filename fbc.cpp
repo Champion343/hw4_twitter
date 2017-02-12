@@ -6,6 +6,7 @@
 #include "fbp.grpc.pb.h"
 
 using grpc::Channel;
+using grpc::ClientReaderWriter;
 using grpc::ClientContext;
 using grpc::Status;
 using fbp::Reply;
@@ -18,7 +19,6 @@ class Client {
  public:
   Client(std::shared_ptr<Channel> channel)
       : stub_(CRMasterServer::NewStub(channel)) {}
-
   // Assambles the client's payload, sends it and presents the response back
   // from the server.
   std::string Login(const std::string& user) {
@@ -95,7 +95,7 @@ class Client {
     }
   }
   
-    std::string List(const std::string& user) {
+    ListReply List(const std::string& user) {
     // Data we are sending to the server.
     Message message;
     message.set_username(user);
@@ -111,14 +111,23 @@ class Client {
 
     // Act upon its status.
     if (status.ok()) {
-      return reply.all_roomes_size();
+      return reply;
     } else {
       std::cout << status.error_code() << ": " << status.error_message()
-                << std::endl;
-      return 999999;
+                << "RPC failed" << std::endl;
+      return reply;
     }
   }
-  
+
+  void Chat(const std::string& user){
+	ClientContext context;
+	std::shared_ptr<ClientReaderWriter<Message,Message>> stream(stub_->Chat(&context));
+	Message message;
+	message.set_username(user);
+	/*std::thread writer ([stream]){
+		message.msg*/
+	}
+  }
  private:
   std::unique_ptr<CRMasterServer::Stub> stub_;
 };
@@ -132,7 +141,6 @@ int main(int argc, char** argv) {
   string client_name;
   string input;
   string room_name;
-  int temp;
   cout << "Please enter your chatroom name..." << endl;
   std::cin >> client_name;
   Client client(grpc::CreateChannel(
@@ -142,29 +150,32 @@ int main(int argc, char** argv) {
   while(input != "CHAT"){
 	  cout << "Please enter a command..." << endl;
 	  cin >> input;
-	  cin >> room_name;
 	  if(input == "LIST"){
-		temp = client.List(client_name);
-		cout << "temp " << temp <<endl;
-		/*for(int i = 0; i< lreply.all_roomes_size(); ++i)
+		
+		lreply = client.List(client_name);
+		cout << "All Rooms" << endl;
+		for(int i = 0; i< lreply.all_roomes_size(); ++i)
 			cout << lreply.all_roomes(i) << endl;
+		cout << "Joined Rooms" << endl;
 		for(int i = 0; i< lreply.joined_roomes_size(); ++i)
-			cout << lreply.joined_roomes(i) <<"shit" <<endl;*/
+			cout << lreply.joined_roomes(i) <<endl;
 	  }
 	  else if(input == "JOIN"){
+			cin >> room_name;
 			reply = client.Join(client_name, room_name);
 			std::cout << "Join: " << reply << std::endl;
 		}
 	  else if (input  =="LEAVE"){
+		cin >> room_name;
 		reply = client.Leave(client_name, room_name);
 		std::cout << "Leave: " << reply << std::endl;
 	  }
 	  else if(input == "CHAT"){
-		cout << "Please enter your chatroom name..." << endl;
+		cout << "Entering CHAT mode..." << endl;
 	  }
 	  else
 		  cout << "Not a command..." << endl;
   }
-	
+  
   return 0;
 }
