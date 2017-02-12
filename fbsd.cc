@@ -278,12 +278,12 @@ class FBServiceImpl final : public CRMasterServer::Service
 		for(int j=0; j < (int)chatRooms[index].following.size(); j++)
 		{
 			int foll = findName(chatRooms[index].following[j], &chatRooms);
-			chatRooms[foll].file.open();
+			chatRooms[foll].file.open(user + ".txt");
 			while(getline(chatRooms[foll].file, line))
 			{
 				placeIn(line, &recentMsgs, chatRooms[index].joinTime[j]);
 			}
-			chatRooms[foll].file.close(user + ".txt");
+			chatRooms[foll].file.close();
 			/*
 			if(chatRooms[foll].position == 0)
 			{
