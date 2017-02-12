@@ -1,4 +1,4 @@
-include <iostream>
+#include <iostream>
 #include <memory>
 #include <string>
 #include <grpc++/grpc++.h>
@@ -95,7 +95,7 @@ class Client {
     }
   }
   
-    /*ListReply List(const std::string& user) {
+    std::string List(const std::string& user) {
     // Data we are sending to the server.
     Message message;
     message.set_username(user);
@@ -111,13 +111,13 @@ class Client {
 
     // Act upon its status.
     if (status.ok()) {
-      return reply;
+      return reply.all_roomes_size();
     } else {
       std::cout << status.error_code() << ": " << status.error_message()
                 << std::endl;
-      return "RPC failed";
+      return 999999;
     }
-  }*/
+  }
   
  private:
   std::unique_ptr<CRMasterServer::Stub> stub_;
@@ -128,10 +128,11 @@ int main(int argc, char** argv) {
   // are created. This channel models a connection to an endpoint (in this case,
   // localhost at port 50051). We indicate that the channel isn't authenticated
   // (use of InsecureChannelCredentials()).
-  //ListReply lreply;
+  ListReply lreply;
   string client_name;
   string input;
   string room_name;
+  int temp;
   cout << "Please enter your chatroom name..." << endl;
   std::cin >> client_name;
   Client client(grpc::CreateChannel(
@@ -143,9 +144,12 @@ int main(int argc, char** argv) {
 	  cin >> input;
 	  cin >> room_name;
 	  if(input == "LIST"){
-		//lreply = client.List(client_name);
-		//lreply.all_rooms
-		//lreply.joined_rooms
+		temp = client.List(client_name);
+		cout << "temp " << temp <<endl;
+		/*for(int i = 0; i< lreply.all_roomes_size(); ++i)
+			cout << lreply.all_roomes(i) << endl;
+		for(int i = 0; i< lreply.joined_roomes_size(); ++i)
+			cout << lreply.joined_roomes(i) <<"shit" <<endl;*/
 	  }
 	  else if(input == "JOIN"){
 			reply = client.Join(client_name, room_name);
@@ -161,6 +165,6 @@ int main(int argc, char** argv) {
 	  else
 		  cout << "Not a command..." << endl;
   }
-
+	
   return 0;
 }
