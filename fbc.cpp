@@ -1,4 +1,4 @@
-#include <iostream>
+include <iostream>
 #include <memory>
 #include <string>
 #include <grpc++/grpc++.h>
@@ -95,7 +95,7 @@ class Client {
     }
   }
   
-    /*std::string List(const std::string& user) {
+    /*ListReply List(const std::string& user) {
     // Data we are sending to the server.
     Message message;
     message.set_username(user);
@@ -107,11 +107,11 @@ class Client {
     ClientContext context;
 
     // The actual RPC.
-    Status status = stub_->Join(&context, message, &reply);
+    Status status = stub_->List(&context, message, &reply);
 
     // Act upon its status.
     if (status.ok()) {
-      return reply.msg();
+      return reply;
     } else {
       std::cout << status.error_code() << ": " << status.error_message()
                 << std::endl;
@@ -128,13 +128,39 @@ int main(int argc, char** argv) {
   // are created. This channel models a connection to an endpoint (in this case,
   // localhost at port 50051). We indicate that the channel isn't authenticated
   // (use of InsecureChannelCredentials()).
+  //ListReply lreply;
   string client_name;
+  string input;
+  string room_name;
   cout << "Please enter your chatroom name..." << endl;
   std::cin >> client_name;
   Client client(grpc::CreateChannel(
       "localhost:50081", grpc::InsecureChannelCredentials()));
   std::string reply = client.Login(client_name);
-  std::cout << "Greeter received: " << reply << std::endl;
+  std::cout << "Login State: " << reply << std::endl;
+  while(input != "CHAT"){
+	  cout << "Please enter a command..." << endl;
+	  cin >> input;
+	  cin >> room_name;
+	  if(input == "LIST"){
+		//lreply = client.List(client_name);
+		//lreply.all_rooms
+		//lreply.joined_rooms
+	  }
+	  else if(input == "JOIN"){
+			reply = client.Join(client_name, room_name);
+			std::cout << "Join: " << reply << std::endl;
+		}
+	  else if (input  =="LEAVE"){
+		reply = client.Leave(client_name, room_name);
+		std::cout << "Leave: " << reply << std::endl;
+	  }
+	  else if(input == "CHAT"){
+		cout << "Please enter your chatroom name..." << endl;
+	  }
+	  else
+		  cout << "Not a command..." << endl;
+  }
 
   return 0;
 }
