@@ -5,6 +5,7 @@
 #include <grpc++/grpc++.h>
 #include <vector>
 #include <deque>
+#include <ctime>
 #include "fbp.grpc.pb.h"
 
 using grpc::Server;
@@ -35,10 +36,19 @@ struct Room
 	vector<string> following;
 	ServerReaderWriter<Message,Message>* stream;
 	fstream file;
-	streampos position = 0;
+	streampos position;
 	vector<string> joinTime;
+	time_t now;
 	
-	Room(string name) : username(name) {}
+	Room()
+	{
+		position = 0;
+	}
+	
+	Room(string name) : username(name) 
+	{
+		position = 0;
+	}
 	
 	//new following
 	bool addFriend(string person)
@@ -46,6 +56,11 @@ struct Room
 		if(findName(person, &following) >= 0)
 			return false;
 		following.push_back(person);
+		now = time(0);
+		string date = ctime(&now);
+		string hms = date.substr(date.find(":") -2, date.find_last_of(":") +2 - (date.find(":") -2));
+		cout << "hms[" << hms << ']' << endl;
+		joinTime.push_back(hms);
 		return true;
 	}
 	
@@ -66,6 +81,7 @@ struct Room
 		if( index < 0)
 			return false;
 		following.erase(following.begin()+index);
+		joinTime.erase(joinTime.begin()+index);
 		return true;
 	}
 	
@@ -78,11 +94,6 @@ struct Room
 			return false;
 		followers.erase(followers.begin()+index);
 		return true;
-	}
-	
-	void newMsg(string chatMsg)
-	{
-		
 	}
 };
 
@@ -114,7 +125,44 @@ bool createChatroom(string username)
 	return true;
 }
 
+bool isLaterthan(string time1, string time2)
+{
+	return true;
+}
 
+string getTimeString(string chatMsg)
+{
+	//get time from chat message
+	string sub = chatMsg.substr(chatMsg.find(" "));
+	string timeString = chatMsg.substr(chatMsg.find(" "), sub.find(" ") - chatMsg.find(" "));
+	string msg = sub.substr(sub.find(" "));
+	cout << "time[ " << timeString << ']' << endl;
+	return timeString;
+}
+
+void placeIn(string chatMsg, deque<string>* last20, string reference)
+{
+	if(isLaterthan(reference, getTimeString(chatMsg))) //check when user joined a room
+		return;
+	if(last20->size() == 0)//first chat message to add
+	{
+		last20->push_back(chatMsg);
+		return;
+	}
+	deque<string>::iterator it;
+	for (it=last20->begin(); it!=last20->end(); ++it) //find repeated chat messages
+		if(*it == chatMsg)
+			return;
+	string timeString = getTimeString(chatMsg);
+	
+	for (it=last20->begin(); it!=last20->end(); ++it)
+	{
+		if(isLaterthan(timeString, getTimeString(*it)))
+			last20->insert(it, chatMsg); //push latest message to front of deque
+		if(last20->size() > 20)
+			last20->pop_back(); //pop oldest message
+	}
+}
 
 //overrides of proto
 class FBServiceImpl final : public CRMasterServer::Service 
@@ -151,7 +199,6 @@ class FBServiceImpl final : public CRMasterServer::Service
 			{
 			cout << "adding to listreply all joined rooms: " << chatRooms[index].following[i] << endl;
 			reply->add_joined_roomes(chatRooms[index].following[i]);
-			reply->get_joined_roomes(chatRooms[index].following[i]);
 			}
 		return Status::OK;
 	}
@@ -219,66 +266,62 @@ class FBServiceImpl final : public CRMasterServer::Service
 	{
 		//bistreamMsg(request->username, request->arguments.(0));
 		//initial call to chat, setup chat then while loop
-		Message firstMsg;
+		Message firstMsg, reply20;
 		stream->Read(&firstMsg);
-		int index = findName(firstMsg.username, &chatRooms);
+		int index = findName(firstMsg.username(), &chatRooms);
+		string user = firstMsg.username();
 		chatRooms[index].stream = stream;
 		//get last 20 msgs from following
 		//in one loop, find most recent from all followers, save the others, read a new one, compare, etc
 		deque<string> recentMsgs;
 		string line;
-		for(int i=0; i < 20; i++)
+		for(int j=0; j < (int)chatRooms[index].following.size(); j++)
 		{
-			for(int j=0; j < (int)chatRooms[index].following.size(); j++)
+			int foll = findName(chatRooms[index].following[j], &chatRooms);
+			chatRooms[foll].file.open();
+			while(getline(chatRooms[foll].file, line))
 			{
-				int foll = findName(chatRooms[index].following[j], &chatRooms);
-				chatRooms[foll].file.open(user + ".txt");
-				if(chatRooms[foll].position == 0)
-				{
-					getline(chatRooms[foll].file, line);
-					chatRooms[foll].position = chatRooms[foll].file.tellg();
-				}
-				else
-				{
-					chatRooms[foll].file.seekg(chatRooms[foll].position);
-					getline(chatRooms[foll].file, line);
-					chatRooms[foll].position = chatRooms[foll].file.tellg();
-				}
-				placeIn(line, &recentMsgs);
+				placeIn(line, &recentMsgs, chatRooms[index].joinTime[j]);
 			}
+			chatRooms[foll].file.close(user + ".txt");
+			/*
+			if(chatRooms[foll].position == 0)
+			{
+				getline(chatRooms[foll].file, line);
+				chatRooms[foll].position = chatRooms[foll].file.tellg();
+			}
+			else
+			{
+				chatRooms[foll].file.seekg(chatRooms[foll].position);
+				getline(chatRooms[foll].file, line);
+				chatRooms[foll].position = chatRooms[foll].file.tellg();
+			}
+			placeIn(line, &recentMsgs, chatRooms[index].joinTime[j]);
+			*/
+		}
+		//send last 20 messages
+		//deque<string>::iterator it;
+		for (int i=0; i < 20 || recentMsgs.size() != 0; i++)
+		{
+			reply20.set_msg(recentMsgs.back());
+			stream->Write(reply20);
+			recentMsgs.pop_back();
 		}
 		//when post, loop thru followers and stream out
-		std::vector<Message> received_msgs;
 		Message note;
-		while (stream->Read(&note)) {
-		  for (const Message& n : received_msgs) {
-			if (n.location().latitude() == note.location().latitude() &&
-				n.location().longitude() == note.location().longitude()) {
-			  stream->Write(n);
+		while (stream->Read(&note)) 
+		{
+			for(int i=0; i < (int)chatRooms.size(); i++)
+			{
+				if(index == i)
+					continue;
+				stream->Write(note);
 			}
-		  }
-		  received_notes.push_back(note);
 		}
 		return Status::OK;
 	}
   
 };
-
-void placeIn(string chatMsg, deque<string>* last20)
-{
-	if(last20->size() == 0)
-	{
-		last20->push_back(chatMsg);
-		return
-	}
-	for(int i=0; i < last20->size(); i++)
-	string sub = chatMsg.substr(line.find(" "));
-	string timeString = chatMsg.substr(line.find(" "), chatMsg.find(" ") - sub.find(" "));
-	string msg = sub.substr(sub.find(" ");
-	cout << "date: " << timeString << endl;
-	deque<string>::iterator it = last20->begin(); 
-	if(
-}
 
 void RunServer() 
 {
