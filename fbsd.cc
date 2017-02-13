@@ -143,16 +143,44 @@ bool createChatroom(string username)
 
 bool isLaterthan(string time1, string time2)
 {
-	return true;
+	/*
+	cout << "time1: [" + time1 + "] time2: [" + time2 + ']' << endl; 
+	string Htime1s = time1.substr(0,2);
+	string Mtime1s = time1.substr(3,2);
+	string Stime1s = time1.substr(6,2);
+	string Htime2s = time2.substr(0,2);
+	string Mtime2s = time2.substr(3,2);
+	string Stime2s = time2.substr(6,2);
+	cout << "time1: H[" +Htime1s+"] "+"M["+Mtime1s+"] "+"S["+Stime1s+']'<< endl;
+	cout << "time2: H[" +Htime2s+"] "+"M["+Mtime2s+"] "+"S["+Stime2s+']'<< endl;
+	*/
+	int Htime1 = stoi(time1.substr(0,2), NULL);
+	int Mtime1 = stoi(time1.substr(3,2), NULL);
+	int Stime1 = stoi(time1.substr(6,2), NULL);
+	int Htime2 = stoi(time2.substr(0,2), NULL);
+	int Mtime2 = stoi(time2.substr(3,2), NULL);
+	int Stime2 = stoi(time2.substr(6,2), NULL);
+	if( Htime1 > Htime2)
+		return true;
+	if( Htime1 == Htime2)
+	{
+		if( Mtime1 > Mtime2)
+			return true;
+		if( Mtime1 == Mtime2)
+			if( Stime1 >= Stime2)
+				return true;
+	}	
+	return false;
 }
 
 string getTimeString(string chatMsg)
 {
 	//get time from chat message
 	string sub = chatMsg.substr(chatMsg.find(" "));
-	string timeString = chatMsg.substr(chatMsg.find(" "), sub.find(" ") - chatMsg.find(" "));
-	string msg = sub.substr(sub.find(" "));
-	//cout << "time[ " << timeString << ']' << endl;
+	//cout << "sub[" << sub << ']' << endl;
+	//cout << "subfind[" << sub.substr(sub.find(" ")) << ']' << endl;
+	string timeString = sub.substr(1, 8);
+	//cout << "gettimestring[" << timeString << ']' << endl;
 	return timeString;
 }
 
@@ -163,20 +191,41 @@ void placeIn(string chatMsg, deque<string>* last20, string reference)
 	if(last20->size() == 0)//first chat message to add
 	{
 		last20->push_back(chatMsg);
+		//cout << "add first msg" << endl;
 		return;
 	}
 	deque<string>::iterator it;
-	for (it=last20->begin(); it!=last20->end(); ++it) //find repeated chat messages
-		if(*it == chatMsg)
+	for(int i=0; i<(int)last20->size(); i++)
+	{
+		//cout << "compare[" << (last20->at(i)) << "][" << chatMsg << ']' << endl;
+		if(last20->at(i) == chatMsg)
+		{
+			//cout << "return" << endl;
 			return;
+		}
+	}
+	/*
+	for (it=last20->begin(); it!=last20->end(); ++it) //find repeated chat messages
+	{
+		cout << "compare " + '['<< it << ']'+ '['+ chatMsg +']' << endl;
+		if(*it == chatMsg)
+		{
+			cout << "return" << endl;
+			return;
+		}
+	}
+	*/
 	string timeString = getTimeString(chatMsg);
 	
 	for (it=last20->begin(); it!=last20->end(); ++it)
 	{
 		if(isLaterthan(timeString, getTimeString(*it)))
+		{
 			last20->insert(it, chatMsg); //push latest message to front of deque
-		if(last20->size() > 20)
-			last20->pop_back(); //pop oldest message
+			if(last20->size() > 20)
+				last20->pop_back(); //pop oldest message
+			return;
+		}
 	}
 }
 
@@ -226,7 +275,7 @@ class FBServiceImpl final : public CRMasterServer::Service
 	override 
 	{
 		//add new friend to user, add user to new friend's followers
-		cout << "tryna join" << endl;
+		cout << request->username() + " tryna join "+request->msg() << endl;
 		int user, joining;
 		user = findName(request->username(), &chatRooms);
 		joining = findName(request->msg(), &chatRooms);
@@ -309,7 +358,7 @@ class FBServiceImpl final : public CRMasterServer::Service
 				cout << "NO OPEN FILE for reading (╯°□°)╯︵ ┻━┻" << endl;
 			while(getline(file, line))
 			{
-				cout << "got line " << line << endl;
+				//cout << "got line " << line << endl;
 				placeIn(line, &recentMsgs, chatRooms[index].joinTime[j]);
 			}
 			cout << "closing file" << endl;
@@ -326,9 +375,10 @@ class FBServiceImpl final : public CRMasterServer::Service
 			stream->Write(reply20);
 		}
 		//cout << "second for loop" << endl;
+		cout << "reply 20 size " << recentMsgs.size() << endl;
 		for (int i=0; i < 20 && recentMsgs.size() != 0; i++)
 		{
-			cout << "reply 20 size " << recentMsgs.size() << endl;
+			
 			reply20.set_msg(recentMsgs.back());
 			//cout << "set msg" << endl;
 			stream->Write(reply20);
@@ -341,7 +391,7 @@ class FBServiceImpl final : public CRMasterServer::Service
 		//open file with truncation
 		file.open(user + ".txt", fstream::out | fstream::trunc);
 		if(file.is_open())
-			cout << "opened file for wrinting"<< endl;
+			cout << "opened file for writing"<< endl;
 		else
 			cout << "NO OPEN FILE for writing (╯°□°)╯︵ ┻━┻" << endl;
 		string lineMsg;
@@ -349,34 +399,15 @@ class FBServiceImpl final : public CRMasterServer::Service
 		time_t nowtime;
 		string date;
 		string hms;
-		//first message add to file
-		lineMsg.clear();
-		nowtime = time(0);
-		date = ctime(&nowtime);
-		hms = date.substr(date.find(":") -2, date.find_last_of(":") +3 - (date.find(":") -2));
-		lineMsg = user + ' ' + hms + ' ' + firstMsg.msg();
-		file << lineMsg << endl;
 		int k;
-		//cout << "third for loop" << endl;
-			for(int i=0; i < (int)chatRooms[index].followers.size(); i++)
-			{
-				k = findName(chatRooms[index].followers[i], &chatRooms);
-				if(index == k)
-					continue;
-				cout << "writing" << endl;
-				if(chatRooms[k].stream != NULL)
-					chatRooms[k].stream->Write(note);
-				else
-					cout << "null stream" << endl;
-			}
-			//cout << "thrid for loop ended" << endl;
+		//first message add to file
 		
 		while (1) 
 		{
 			//cout << "while1" << endl;
 			if(stream->Read(&note))//blocking
 			{
-			cout << "read something" << endl;
+			//cout << "read something" << endl;
 			lineMsg.clear();
 			nowtime = time(0);
 			date = ctime(&nowtime);
@@ -407,7 +438,7 @@ class FBServiceImpl final : public CRMasterServer::Service
 
 void RunServer() 
 {
-  string server_address("0.0.0.0:50023");
+  string server_address("0.0.0.0:50032");
   FBServiceImpl service;
 
   ServerBuilder builder;
