@@ -286,7 +286,7 @@ class FBServiceImpl final : public CRMasterServer::Service
 		cout << "chat call" << endl;
 		Message firstMsg, reply20;
 		stream->Read(&firstMsg);
-		cout << "read first msg" << endl;
+		cout << "read first msg: " << firstMsg.username() << ' ' << firstMsg.msg() << endl;
 		int index = findName(firstMsg.username(), &chatRooms);
 		string user = firstMsg.username();
 		chatRooms[index].stream = stream;
@@ -318,6 +318,12 @@ class FBServiceImpl final : public CRMasterServer::Service
 		cout << "first for loop ended" << endl;
 		//send last 20 messages
 		//deque<string>::iterator it;
+		if(recentMsgs.size() == 0)
+		{
+			cout << "wrting nothing for last 20 msgs" << endl;
+			reply20.set_msg("no recent msgs");
+			stream->Write(reply20);
+		}
 		cout << "second for loop" << endl;
 		for (int i=0; i < 20 && recentMsgs.size() != 0; i++)
 		{
@@ -342,27 +348,56 @@ class FBServiceImpl final : public CRMasterServer::Service
 		time_t nowtime;
 		string date;
 		string hms;
-		while (stream->Read(&note)) 
-		{
-			line.clear();
-			nowtime = time(0);
-			date = ctime(&nowtime);
-			hms = date.substr(date.find(":") -2, date.find_last_of(":") +3 - (date.find(":") -2));
-			line = user + ' ' + hms + ' ' + note.msg();
-			file << line << endl;
-			cout << "third for loop" << endl;
-			for(int i=0; i < (int)chatRooms.size(); i++)
+		//first message add to file
+		lineMsg.clear();
+		nowtime = time(0);
+		date = ctime(&nowtime);
+		hms = date.substr(date.find(":") -2, date.find_last_of(":") +3 - (date.find(":") -2));
+		lineMsg = user + ' ' + hms + ' ' + firstMsg.msg();
+		file << lineMsg << endl;
+		int k;
+		cout << "third for loop" << endl;
+			for(int i=0; i < (int)chatRooms[index].followers.size(); i++)
 			{
-				if(index == i)
+				k = findName(chatRooms[index].followers[i], &chatRooms);
+				if(index == k)
 					continue;
 				cout << "writing" << endl;
-				if(chatRooms[i].stream != NULL)
-					chatRooms[i].stream->Write(note);
+				if(chatRooms[k].stream != NULL)
+					chatRooms[k].stream->Write(note);
 				else
 					cout << "null stream" << endl;
 			}
 			cout << "thrid for loop ended" << endl;
+		
+		while (1) 
+		{
+			cout << "while1" << endl;
+			if(stream->Read(&note))//blocking
+			{
+			cout << "read something" << endl;
+			lineMsg.clear();
+			nowtime = time(0);
+			date = ctime(&nowtime);
+			hms = date.substr(date.find(":") -2, date.find_last_of(":") +3 - (date.find(":") -2));
+			lineMsg = user + ' ' + hms + ' ' + note.msg();
+			file << lineMsg << endl;
+			cout << "4 for loop" << endl;
+			for(int i=0; i < (int)chatRooms[index].followers.size(); i++)
+			{
+				k = findName(chatRooms[index].followers[i], &chatRooms);
+				if(index == k)
+					continue;
+				cout << "writing" << endl;
+				if(chatRooms[k].stream != NULL)
+					chatRooms[k].stream->Write(note);
+				else
+					cout << "null stream" << endl;
+			}
+			cout << "4 for loop ended" << endl;
+			}
 		}
+		file.close();
 		cout << "out of while" << endl;
 		return Status::OK;
 	}
