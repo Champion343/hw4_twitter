@@ -16,6 +16,15 @@ using fbp::Message;
 using fbp::CRMasterServer;
 using namespace std;
 
+void reading(shared_ptr<ClientReaderWriter<Message,Message>> stream)
+{
+	Message server_message;
+	while(stream->Read(&server_message)) {//blocking
+		cout << "server msg: " << server_message.msg() << endl;
+		cout << "while reading" << endl;
+	}
+}
+	
 class Client {
  public:
   Client(std::shared_ptr<Channel> channel)
@@ -126,6 +135,7 @@ class Client {
 	//string text;
 	Message client_message;
 	Message server_message;
+	thread readMsg(reading, stream);
 	cout << "Begin Chatting..." << endl;
 	while(1){
 	cout << "while1" << endl;
@@ -138,10 +148,7 @@ class Client {
 	stream->Write(client_message);
 	//i think writesdone closes the stream, which makes read on server return false
 	//stream -> WritesDone();
-	while(stream->Read(&server_message)) {//blocking
-		cout << server_message.msg() << endl;
-		cout << "while reading" << endl;
-	}
+	
 	}
 	Status status = stream->Finish();
 }
