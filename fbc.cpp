@@ -29,7 +29,7 @@ class Client {
  public:
   Client(std::shared_ptr<Channel> channel)
       : stub_(CRMasterServer::NewStub(channel)) {}
-  // Assambles the client's payload, sends it and presents the response back
+  // Assembles the client's payload, sends it and presents the response back
   // from the server.
   std::string Login(const std::string& user) {
     // Data we are sending to the server.
@@ -37,9 +37,6 @@ class Client {
     message.set_username(user);
     // Container for the data we expect from the server.
     Reply reply;
-
-    // Context for the client. It could be used to convey extra information to
-    // the server and/or tweak certain RPC behaviors.
     ClientContext context;
 
     // The actual RPC.
@@ -63,8 +60,6 @@ class Client {
     // Container for the data we expect from the server.
     Reply reply;
 
-    // Context for the client. It could be used to convey extra information to
-    // the server and/or tweak certain RPC behaviors.
     ClientContext context;
 
     // The actual RPC.
@@ -88,8 +83,6 @@ class Client {
     // Container for the data we expect from the server.
     Reply reply;
 
-    // Context for the client. It could be used to convey extra information to
-    // the server and/or tweak certain RPC behaviors.
     ClientContext context;
 
     // The actual RPC.
@@ -112,8 +105,6 @@ class Client {
     // Container for the data we expect from the server.
     ListReply reply;
 
-    // Context for the client. It could be used to convey extra information to
-    // the server and/or tweak certain RPC behaviors.
     ClientContext context;
 
     // The actual RPC.
@@ -129,27 +120,25 @@ class Client {
     }
   }
 
-  void Chat(const std::string& user){//need to thread? http://www.cplusplus.com/reference/thread/thread/
+  void Chat(const std::string& user){
 	ClientContext context;
 	std::shared_ptr<ClientReaderWriter<Message,Message>> stream(stub_->Chat(&context));
-	//string text;
+	string text;
 	Message client_message;
 	Message server_message;
 	thread readMsg(reading, stream);
 	cout << "Begin Chatting..." << endl;
+	cin.ignore();
+	client_message.set_username(user);
+	stream->Write(client_message);
 	while(1){
 	cout << "while1" << endl;
-	string text;
-	cin.ignore();
     getline(cin, text);
 	cout << "you wrote: " << text << endl;
 	client_message.set_msg(text);
-	client_message.set_username(user);
 	stream->Write(client_message);
-	//i think writesdone closes the stream, which makes read on server return false
-	//stream -> WritesDone();
-	
 	}
+	//if we ever wanted an exit this would close the stream and exit Chat
 	Status status = stream->Finish();
 }
   
