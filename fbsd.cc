@@ -35,28 +35,30 @@ struct Room
 	vector<string> followers;
 	vector<string> following;
 	ServerReaderWriter<Message,Message>* stream;
-	fstream* file;
-	streampos position;
+	//fstream* file;
+	//streampos position;
 	//int position;
 	vector<string> joinTime;
 	time_t now;
 	
 	Room()
 	{
-		position = 0;
-		file = new fstream;
+		//position = 0;
+		//file = new fstream;
+		stream = NULL;
 	}
 	
 	Room(string name) : username(name) 
 	{
-		position = 0;
-		file = new fstream;
+		//position = 0;
+		//file = new fstream;
+		stream = NULL;
 	}
 	
 	~Room()
 	{
-		file->close();
-		delete file;
+		//file->close();
+		//delete file;
 	}
 	
 	//new following
@@ -67,7 +69,7 @@ struct Room
 		following.push_back(person);
 		now = time(0);
 		string date = ctime(&now);
-		string hms = date.substr(date.find(":") -2, date.find_last_of(":") +2 - (date.find(":") -2));
+		string hms = date.substr(date.find(":") -2, date.find_last_of(":") +3 - (date.find(":") -2));
 		cout << "hms[" << hms << ']' << endl;
 		joinTime.push_back(hms);
 		return true;
@@ -126,9 +128,13 @@ int findName(string username, vector<Room>* list)
 //create chat room
 bool createChatroom(string username)
 {
+	cout << "create chatroom" << endl;
 	if(findName(username, &chatRooms) >= 0)
 		return false;
+	cout << "new room" << endl;
 	Room newRoom(username);
+	cout << "new room created" << endl;
+	cout << "pushing size " << chatRooms.size() << endl;
 	chatRooms.push_back(newRoom);
 	cout << "created room: " << username << endl;
 	return true;
@@ -181,10 +187,12 @@ class FBServiceImpl final : public CRMasterServer::Service
     Status Login(ServerContext* context, const Message* request, Reply* reply) 
 	override 
 	{
+		cout << "creating room: " << request->username() << endl;
 		if(createChatroom(request->username()))
 			reply->set_msg("server created room");
 		else
 			reply->set_msg("server no created room");
+		cout << "ok login" << endl;
 		return Status::OK;	
 	}
   
@@ -275,58 +283,87 @@ class FBServiceImpl final : public CRMasterServer::Service
 	{
 		//bistreamMsg(request->username, request->arguments.(0));
 		//initial call to chat, setup chat then while loop
+		cout << "chat call" << endl;
 		Message firstMsg, reply20;
 		stream->Read(&firstMsg);
+		cout << "read first msg" << endl;
 		int index = findName(firstMsg.username(), &chatRooms);
 		string user = firstMsg.username();
 		chatRooms[index].stream = stream;
+		cout << "assigned a stream" << endl;
 		//get last 20 msgs from following
 		//in one loop, find most recent from all followers, save the others, read a new one, compare, etc
 		deque<string> recentMsgs;
 		string line;
+		cout << "first for loop" << endl;
+		fstream file;
 		for(int j=0; j < (int)chatRooms[index].following.size(); j++)
 		{
 			int foll = findName(chatRooms[index].following[j], &chatRooms);
-			chatRooms[foll].file->open(user + ".txt");
-			while(getline(*(chatRooms[foll].file), line))
+			cout << "opening file " << chatRooms[foll].username + ".txt" << endl;
+			file.open(chatRooms[foll].username + ".txt");
+			if(file.is_open())
+			cout << "opened file "<< endl;
+			else
+				cout << "NO OPEN FILE for reading (╯°□°)╯︵ ┻━┻" << endl;
+			while(getline(file, line))
 			{
+				cout << "got line " << line << endl;
 				placeIn(line, &recentMsgs, chatRooms[index].joinTime[j]);
 			}
-			chatRooms[foll].file->close();
-			/*
-			if(chatRooms[foll].position == 0)
-			{
-				getline(chatRooms[foll].file, line);
-				chatRooms[foll].position = chatRooms[foll].file.tellg();
-			}
-			else
-			{
-				chatRooms[foll].file.seekg(chatRooms[foll].position);
-				getline(chatRooms[foll].file, line);
-				chatRooms[foll].position = chatRooms[foll].file.tellg();
-			}
-			placeIn(line, &recentMsgs, chatRooms[index].joinTime[j]);
-			*/
+			cout << "closing file" << endl;
+			file.close();
+			cout << "first for loop in " << j << endl;
 		}
+		cout << "first for loop ended" << endl;
 		//send last 20 messages
 		//deque<string>::iterator it;
-		for (int i=0; i < 20 || recentMsgs.size() != 0; i++)
+		cout << "second for loop" << endl;
+		for (int i=0; i < 20 && recentMsgs.size() != 0; i++)
 		{
+			cout << "reply 20 size " << recentMsgs.size() << endl;
 			reply20.set_msg(recentMsgs.back());
+			cout << "set msg" << endl;
 			stream->Write(reply20);
+			cout << "write msg" << endl;
 			recentMsgs.pop_back();
 		}
+		cout << "second for loop ended" << endl;
 		//when post, loop thru followers and stream out
 		Message note;
+		//open file with truncation
+		file.open(user + ".txt", fstream::out | fstream::trunc);
+		if(file.is_open())
+			cout << "opened file for append"<< endl;
+		else
+			cout << "NO OPEN FILE for writing (╯°□°)╯︵ ┻━┻" << endl;
+		string lineMsg;
+		cout << "while loop" << endl;
+		time_t nowtime;
+		string date;
+		string hms;
 		while (stream->Read(&note)) 
 		{
+			line.clear();
+			nowtime = time(0);
+			date = ctime(&nowtime);
+			hms = date.substr(date.find(":") -2, date.find_last_of(":") +3 - (date.find(":") -2));
+			line = user + ' ' + hms + ' ' + note.msg();
+			file << line << endl;
+			cout << "third for loop" << endl;
 			for(int i=0; i < (int)chatRooms.size(); i++)
 			{
 				if(index == i)
 					continue;
-				stream->Write(note);
+				cout << "writing" << endl;
+				if(chatRooms[i].stream != NULL)
+					chatRooms[i].stream->Write(note);
+				else
+					cout << "null stream" << endl;
 			}
+			cout << "thrid for loop ended" << endl;
 		}
+		cout << "out of while" << endl;
 		return Status::OK;
 	}
   
@@ -334,7 +371,7 @@ class FBServiceImpl final : public CRMasterServer::Service
 
 void RunServer() 
 {
-  string server_address("0.0.0.0:50081");
+  string server_address("0.0.0.0:50023");
   FBServiceImpl service;
 
   ServerBuilder builder;
