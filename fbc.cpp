@@ -120,7 +120,7 @@ class Client {
     }
   }
 
-  void Chat(const std::string& user){
+  void Chat(const std::string& user){//need to thread? http://www.cplusplus.com/reference/thread/thread/
 	ClientContext context;
 	std::shared_ptr<ClientReaderWriter<Message,Message>> stream(stub_->Chat(&context));
 	//string text;
@@ -128,21 +128,21 @@ class Client {
 	Message server_message;
 	cout << "Begin Chatting..." << endl;
 	while(1){
+	cout << "while1" << endl;
 	string text;
 	cin.ignore();
     getline(cin, text);
+	cout << "you wrote: " << text << endl;
 	client_message.set_msg(text);
 	client_message.set_username(user);
-	cout << "write" << endl;
 	stream->Write(client_message);
-	cout << "write done" << endl;
-	stream -> WritesDone();
-	cout << "READLOOP" << endl;
-	while(stream->Read(&server_message)) {
+	//i think writesdone closes the stream, which makes read on server return false
+	//stream -> WritesDone();
+	while(stream->Read(&server_message)) {//blocking
 		cout << server_message.msg() << endl;
+		cout << "while reading" << endl;
 	}
 	}
-	cout << "done" << endl;
 	Status status = stream->Finish();
 }
   
