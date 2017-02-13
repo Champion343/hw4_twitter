@@ -133,12 +133,16 @@ class Client {
     getline(cin, text);
 	client_message.set_msg(text);
 	client_message.set_username(user);
+	cout << "write" << endl;
 	stream->Write(client_message);
+	cout << "write done" << endl;
 	stream -> WritesDone();
+	cout << "READLOOP" << endl;
 	while(stream->Read(&server_message)) {
 		cout << server_message.msg() << endl;
 	}
 	}
+	cout << "done" << endl;
 	Status status = stream->Finish();
 }
   
@@ -158,7 +162,7 @@ int main(int argc, char** argv) {
   cout << "Please enter your chatroom name..." << endl;
   std::cin >> client_name;
   Client client(grpc::CreateChannel(
-      "localhost:50081", grpc::InsecureChannelCredentials()));
+      "localhost:50023", grpc::InsecureChannelCredentials()));
   std::string reply = client.Login(client_name);
   std::cout << "Login State: " << reply << std::endl;
   while(input != "CHAT"){
