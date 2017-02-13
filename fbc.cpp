@@ -16,21 +16,21 @@ using fbp::Message;
 using fbp::CRMasterServer;
 using namespace std;
 
+//thread handles reading for bidirectional streaming
 void reading(shared_ptr<ClientReaderWriter<Message,Message>> stream)
 {
 	Message server_message;
 	while(stream->Read(&server_message)) {//blocking
-		cout << "server msg: " << server_message.msg() << endl;
-		cout << "while reading" << endl;
+		cout << server_message.username()<<": " <<server_message.msg() << endl;
 	}
 }
-	
+//Client object used for grpc calls
 class Client {
  public:
   Client(std::shared_ptr<Channel> channel)
       : stub_(CRMasterServer::NewStub(channel)) {}
-  // Assembles the client's payload, sends it and presents the response back
-  // from the server.
+
+  //Login function send message containing username and receives response
   std::string Login(const std::string& user) {
     // Data we are sending to the server.
     Message message;
@@ -51,7 +51,8 @@ class Client {
       return "RPC failed";
     }
   }
-
+	//Join function sends a message containing username and the room that is being
+	//joined then returns server response
     std::string Join(const std::string& user, std::string& room) {
     // Data we are sending to the server.
     Message message;
@@ -74,7 +75,8 @@ class Client {
       return "RPC failed";
     }
   }
-  
+    //Leave function sends a message containing username and the room that is being
+	//left then returns server response
     std::string Leave(const std::string& user, std::string& room) {
     // Data we are sending to the server.
     Message message;
@@ -97,7 +99,7 @@ class Client {
       return "RPC failed";
     }
   }
-  
+    
     ListReply List(const std::string& user) {
     // Data we are sending to the server.
     Message message;
@@ -119,22 +121,25 @@ class Client {
       return reply;
     }
   }
-
+  //Chat function opens a bidirectional stream to the server then sends
+  //its username and begins reading and writing to the server
   void Chat(const std::string& user){
 	ClientContext context;
+	//bidirectional streaming
 	std::shared_ptr<ClientReaderWriter<Message,Message>> stream(stub_->Chat(&context));
 	string text;
 	Message client_message;
-	Message server_message;
+	//reading thread
 	thread readMsg(reading, stream);
 	cout << "Begin Chatting..." << endl;
+	//remove anything left over from the command line
 	cin.ignore();
 	client_message.set_username(user);
+	//send initial message declaring username
 	stream->Write(client_message);
+	//loop through requesting user input and send message to server
 	while(1){
-	cout << "while1" << endl;
     getline(cin, text);
-	cout << "you wrote: " << text << endl;
 	client_message.set_msg(text);
 	stream->Write(client_message);
 	}
@@ -155,35 +160,42 @@ int main(int argc, char** argv) {
   string client_name;
   string input;
   string room_name;
+  
+  
   cout << "Please enter your chatroom name..." << endl;
   std::cin >> client_name;
+  //create connection to server
   Client client(grpc::CreateChannel(
-      "localhost:50023", grpc::InsecureChannelCredentials()));
+      "localhost:50032", grpc::InsecureChannelCredentials()));
   std::string reply = client.Login(client_name);
   std::cout << "Login State: " << reply << std::endl;
+  //loop command til client enters CHAT mode
   while(input != "CHAT"){
 	  cout << "Please enter a command..." << endl;
 	  cin >> input;
+	  //Calls List function then prints all rooms and all rooms joined by client
 	  if(input == "LIST"){
-		
 		lreply = client.List(client_name);
-		cout << "All Rooms" << endl;
+		cout << "All Rooms:" << endl;
 		for(int i = 0; i< lreply.all_roomes_size(); ++i)
 			cout << lreply.all_roomes(i) << endl;
-		cout << "Joined Rooms" << endl;
+		cout << "Joined Rooms:" << endl;
 		for(int i = 0; i< lreply.joined_roomes_size(); ++i)
 			cout << lreply.joined_roomes(i) <<endl;
 	  }
+	  //Calls join function the prints if successful or not
 	  else if(input == "JOIN"){
 			cin >> room_name;
 			reply = client.Join(client_name, room_name);
 			std::cout << "Join: " << reply << std::endl;
 		}
+	  //Calls leave function the prints if successful or not
 	  else if (input  =="LEAVE"){
 		cin >> room_name;
 		reply = client.Leave(client_name, room_name);
 		std::cout << "Leave: " << reply << std::endl;
 	  }
+	  //Calls chat function and enters chat mode
 	  else if(input == "CHAT"){
 		client.Chat(client_name);
 	  }
