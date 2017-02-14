@@ -29,38 +29,27 @@ int findName(string username, vector<string>* list)
 	return -1;
 }
 
+//a person's account
 struct Room
 {
-	//name of room, followers, and following
 	string username;
 	vector<string> followers;
 	vector<string> following;
 	ServerReaderWriter<Message,Message>* stream;
-	//fstream* file;
-	//streampos position;
-	//int position;
-	vector<string> joinTime;
+	vector<string> joinTime; //when subscribing to someone, store the time
 	time_t now;
 	
 	Room()
 	{
-		//position = 0;
-		//file = new fstream;
 		stream = NULL;
 	}
 	
 	Room(string name) : username(name) 
 	{
-		//position = 0;
-		//file = new fstream;
 		stream = NULL;
 	}
 	
-	~Room()
-	{
-		//file->close();
-		//delete file;
-	}
+	~Room(){}
 	
 	//new following
 	bool addFriend(string person)
@@ -68,10 +57,10 @@ struct Room
 		if(findName(person, &following) >= 0)
 			return false;
 		following.push_back(person);
+		//get the time H:M:S
 		now = time(0);
 		string date = ctime(&now);
 		string hms = date.substr(date.find(":") -2, date.find_last_of(":") +3 - (date.find(":") -2));
-		//cout << "hms[" << hms << ']' << endl;
 		joinTime.push_back(hms);
 		return true;
 	}
@@ -89,9 +78,9 @@ struct Room
 	bool unfriend(string person)
 	{
 		int index = findName(person, &following);
-		//cout << "unfriend index: " << index << endl;
 		if( index < 0)
 			return false;
+		//remove from both following list and time subscribed to person 
 		following.erase(following.begin()+index);
 		joinTime.erase(joinTime.begin()+index);
 		return true;
@@ -101,7 +90,6 @@ struct Room
 	bool unfollowedBy(string person)
 	{
 		int index = findName(person, &followers);
-		//cout << "unfollow index: " << index << endl;
 		if( index < 0)
 			return false;
 		followers.erase(followers.begin()+index);
@@ -109,18 +97,16 @@ struct Room
 	}
 };
 
-//Global: all chatrooms
+//Global: all chatrooms and bi directional streams
 vector<Room> chatRooms;
 vector< ServerReaderWriter<Message,Message>* > Streams;
 
 //find exsiting chatroom, return index
 int findName(string username, vector<Room>* list)
 {
-	//cout << "finding name...";
 	for(int i=0; i < (int)list->size(); i++)
 		if(username == list->at(i).username)
 		{
-			//cout << "found" << endl;
 			return i;
 		}
 	return -1;
@@ -129,37 +115,26 @@ int findName(string username, vector<Room>* list)
 //create chat room
 bool createChatroom(string username)
 {
-	//cout << "create chatroom" << endl;
 	if(findName(username, &chatRooms) >= 0)
 		return false;
-	//cout << "new room" << endl;
 	Room newRoom(username);
-	//cout << "new room created" << endl;
-	//cout << "pushing size " << chatRooms.size() << endl;
 	chatRooms.push_back(newRoom);
 	cout << "created room: " << username << endl;
 	return true;
 }
 
+//if time1 is closer to the present than time2 
+//return true
 bool isLaterthan(string time1, string time2)
 {
-	/*
-	cout << "time1: [" + time1 + "] time2: [" + time2 + ']' << endl; 
-	string Htime1s = time1.substr(0,2);
-	string Mtime1s = time1.substr(3,2);
-	string Stime1s = time1.substr(6,2);
-	string Htime2s = time2.substr(0,2);
-	string Mtime2s = time2.substr(3,2);
-	string Stime2s = time2.substr(6,2);
-	cout << "time1: H[" +Htime1s+"] "+"M["+Mtime1s+"] "+"S["+Stime1s+']'<< endl;
-	cout << "time2: H[" +Htime2s+"] "+"M["+Mtime2s+"] "+"S["+Stime2s+']'<< endl;
-	*/
+	//parse H:M:S and convert to int
 	int Htime1 = stoi(time1.substr(0,2), NULL);
 	int Mtime1 = stoi(time1.substr(3,2), NULL);
 	int Stime1 = stoi(time1.substr(6,2), NULL);
 	int Htime2 = stoi(time2.substr(0,2), NULL);
 	int Mtime2 = stoi(time2.substr(3,2), NULL);
 	int Stime2 = stoi(time2.substr(6,2), NULL);
+	//compare HMS
 	if( Htime1 > Htime2)
 		return true;
 	if( Htime1 == Htime2)
@@ -173,17 +148,17 @@ bool isLaterthan(string time1, string time2)
 	return false;
 }
 
+//return H:M:S from "user H:M:S message"
 string getTimeString(string chatMsg)
 {
 	//get time from chat message
 	string sub = chatMsg.substr(chatMsg.find(" "));
-	//cout << "sub[" << sub << ']' << endl;
-	//cout << "subfind[" << sub.substr(sub.find(" ")) << ']' << endl;
 	string timeString = sub.substr(1, 8);
-	//cout << "gettimestring[" << timeString << ']' << endl;
 	return timeString;
 }
 
+//place chat message from a chatroom into a deque for sending the 
+//latest 20 messages from person's list of subscriptions
 void placeIn(string chatMsg, deque<string>* last20, string reference)
 {
 	if(isLaterthan(reference, getTimeString(chatMsg))) //check when user joined a room
@@ -191,32 +166,17 @@ void placeIn(string chatMsg, deque<string>* last20, string reference)
 	if(last20->size() == 0)//first chat message to add
 	{
 		last20->push_back(chatMsg);
-		//cout << "add first msg" << endl;
 		return;
 	}
 	deque<string>::iterator it;
-	for(int i=0; i<(int)last20->size(); i++)
+	for(int i=0; i<(int)last20->size(); i++)//check for repeats
 	{
-		//cout << "compare[" << (last20->at(i)) << "][" << chatMsg << ']' << endl;
 		if(last20->at(i) == chatMsg)
 		{
-			//cout << "return" << endl;
 			return;
 		}
 	}
-	/*
-	for (it=last20->begin(); it!=last20->end(); ++it) //find repeated chat messages
-	{
-		cout << "compare " + '['<< it << ']'+ '['+ chatMsg +']' << endl;
-		if(*it == chatMsg)
-		{
-			cout << "return" << endl;
-			return;
-		}
-	}
-	*/
 	string timeString = getTimeString(chatMsg);
-	
 	for (it=last20->begin(); it!=last20->end(); ++it)
 	{
 		if(isLaterthan(timeString, getTimeString(*it)))
@@ -242,7 +202,6 @@ class FBServiceImpl final : public CRMasterServer::Service
 			reply->set_msg("server created room");
 		else
 			reply->set_msg("server no created room");
-		//cout << "ok login" << endl;
 		return Status::OK;	
 	}
   
@@ -250,27 +209,21 @@ class FBServiceImpl final : public CRMasterServer::Service
 	Status List(ServerContext* context, const Message* request, ListReply* reply) 
 	override 
 	{
-		//set all rooms
-		//exit(1);
-		//cout << "tryna list" << endl;
-		//cout << "loop1: " << (int)chatRooms.size() << endl;
+		//list all chatrooms 
 		for(int i=0; i < (int)chatRooms.size(); i++)
 		{
-			//cout << "adding to listreply all rooms: " << chatRooms[i].username << endl;
 			reply->add_all_roomes(chatRooms[i].username);
 		}
-		//set all rooms joined by user
+		//list all rooms joined by user
 		int index = findName(request->username(), &chatRooms);
-		//cout << "index: " << index << " loop2: " << (int)chatRooms[index].following.size() << endl;
 		for(int i=0; i < (int)chatRooms[index].following.size(); i++)
-			{
-			//cout << "adding to listreply all joined rooms: " << chatRooms[index].following[i] << endl;
+		{
 			reply->add_joined_roomes(chatRooms[index].following[i]);
-			}
+		}
 		return Status::OK;
 	}
 
-	// Join(join own room) take time now, when chat command this is upper bound for time
+	// Join(able to join own room, not sure if crash)
 	Status Join(ServerContext* context, const Message* request, Reply* reply) 
 	override 
 	{
@@ -307,7 +260,6 @@ class FBServiceImpl final : public CRMasterServer::Service
 		int user, leaving;
 		user = findName(request->username(), &chatRooms);
 		leaving = findName(request->msg(), &chatRooms);
-		//cout << "size " << chatRooms.size() << " indexs " << user << "  " << leaving << endl;
 		if( user < 0 || leaving < 0)
 		{
 			cout << "leave fail1" << endl;
@@ -323,7 +275,6 @@ class FBServiceImpl final : public CRMasterServer::Service
 			cout << "leave fail2" << endl;
 			reply->set_msg("leave fail");
 		}
-		//cout << "returning from leave" << endl;
 		return Status::OK;
 	}
 
@@ -331,102 +282,85 @@ class FBServiceImpl final : public CRMasterServer::Service
 	Status Chat(ServerContext* context, ServerReaderWriter<Message,Message>* stream) 
 	override
 	{
-		//bistreamMsg(request->username, request->arguments.(0));
-		//initial call to chat, setup chat then while loop
-		//cout << "chat call" << endl;
+		//initial call to chat, setup chat then while loop read/write
 		Message firstMsg, reply20;
 		stream->Read(&firstMsg);
-		//cout << "read first msg: " << firstMsg.username() << ' ' << firstMsg.msg() << endl;
 		int index = findName(firstMsg.username(), &chatRooms);
 		string user = firstMsg.username();
 		chatRooms[index].stream = stream;
-		//cout << "assigned a stream" << endl;
-		//get last 20 msgs from following
-		//in one loop, find most recent from all followers, save the others, read a new one, compare, etc
+		//get last 20 msgs from subscriptions
 		deque<string> recentMsgs;
 		string line;
-		//cout << "first for loop" << endl;
 		fstream file;
 		for(int j=0; j < (int)chatRooms[index].following.size(); j++)
 		{
 			int foll = findName(chatRooms[index].following[j], &chatRooms);
-			//cout << "opening file " << chatRooms[foll].username + ".txt" << endl;
 			file.open(chatRooms[foll].username + ".txt");
 			if(file.is_open())
 			cout << "opened file for reading"<< endl;
 			else
-				cout << "NO OPEN FILE for reading (╯°□°)╯︵ ┻━┻" << endl;
+				cout << "NO OPEN FILE for reading (╯°□°)╯︵ ┻━┻" << endl;//not necessarily an error
+			//go thru current subscription's file
 			while(getline(file, line))
 			{
-				//cout << "got line " << line << endl;
 				placeIn(line, &recentMsgs, chatRooms[index].joinTime[j]);
 			}
 			cout << "closing file" << endl;
 			file.close();
-			//cout << "first for loop in " << j << endl;
 		}
-		//cout << "first for loop ended" << endl;
-		//send last 20 messages
-		//deque<string>::iterator it;
+		//no recent messages from subscriptions
 		if(recentMsgs.size() == 0)
 		{
 			cout << "wrting nothing for last 20 msgs" << endl;
 			reply20.set_msg("no recent msgs");
 			stream->Write(reply20);
 		}
-		//cout << "second for loop" << endl;
 		cout << "reply 20 size " << recentMsgs.size() << endl;
+		//send most recent subscription messages
 		for (int i=0; i < 20 && recentMsgs.size() != 0; i++)
 		{
 			
 			reply20.set_msg(recentMsgs.back());
-			//cout << "set msg" << endl;
 			stream->Write(reply20);
-			//cout << "write msg" << endl;
 			recentMsgs.pop_back();
 		}
-		//cout << "second for loop ended" << endl;
-		//when post, loop thru followers and stream out
 		Message note;
-		//open file with truncation
+		//open file with truncation for writing
 		file.open(user + ".txt", fstream::out | fstream::trunc);
 		if(file.is_open())
 			cout << "opened file for writing"<< endl;
 		else
 			cout << "NO OPEN FILE for writing (╯°□°)╯︵ ┻━┻" << endl;
 		string lineMsg;
-		//cout << "while loop" << endl;
 		time_t nowtime;
 		string date;
 		string hms;
 		int k;
-		//first message add to file
-		
 		while (1) 
-		{
-			//cout << "while1" << endl;
+		{   //read client's message
 			if(stream->Read(&note))//blocking
 			{
-			//cout << "read something" << endl;
-			lineMsg.clear();
-			nowtime = time(0);
-			date = ctime(&nowtime);
-			hms = date.substr(date.find(":") -2, date.find_last_of(":") +3 - (date.find(":") -2));
-			lineMsg = user + ' ' + hms + ' ' + note.msg();
-			file << lineMsg << endl;
-			cout << "added to file: " << lineMsg << endl;
-			for(int i=0; i < (int)chatRooms[index].followers.size(); i++)
-			{
-				k = findName(chatRooms[index].followers[i], &chatRooms);
-				if(index == k)
-					continue;
-				cout << "writing" << endl;
-				if(chatRooms[k].stream != NULL)
-					chatRooms[k].stream->Write(note);
-				else
-					cout << "null stream" << endl;
-			}
-			//cout << "4 for loop ended" << endl;
+				lineMsg.clear();
+				//time stamp
+				nowtime = time(0);
+				date = ctime(&nowtime);
+				hms = date.substr(date.find(":") -2, date.find_last_of(":") +3 - (date.find(":") -2));
+				//format: username time message
+				lineMsg = user + ' ' + hms + ' ' + note.msg();
+				file << lineMsg << endl;
+				cout << "added to file: " << lineMsg << endl;
+				//loop thru followers and post to their screens
+				for(int i=0; i < (int)chatRooms[index].followers.size(); i++)
+				{
+					k = findName(chatRooms[index].followers[i], &chatRooms);
+					if(index == k) //do not post to self
+						continue;
+					cout << "writing" << endl;
+					if(chatRooms[k].stream != NULL)
+						chatRooms[k].stream->Write(note);
+					else
+						cout << "null stream" << endl; //follower has not called CHAT yet
+				}
 			}
 		}
 		file.close();
@@ -436,9 +370,9 @@ class FBServiceImpl final : public CRMasterServer::Service
   
 };
 
-void RunServer() 
+//code from helloworld example given greeter_server.cc
+void RunServer(string server_address) 
 {
-  string server_address("0.0.0.0:50032");
   FBServiceImpl service;
 
   ServerBuilder builder;
@@ -458,8 +392,16 @@ void RunServer()
 
 int main(int argc, char** argv) 
 {
-  RunServer();
-
+  string server_address("0.0.0.0:50032");
+  if(argc == 2)
+  {
+	  server_address = "0.0.0.0:"+(string)argv[1];
+  }
+  else
+  {
+	cout << "default port 0.0.0.0:50032" << endl;
+  }
+  RunServer(server_address);
   return 0;
 }
 
