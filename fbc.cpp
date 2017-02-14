@@ -160,13 +160,16 @@ int main(int argc, char** argv) {
   string client_name;
   string input;
   string room_name;
-  
-  
-  cout << "Please enter your chatroom name..." << endl;
-  std::cin >> client_name;
+  string host_name = argv[1];
+  string port = argv[2];
+  host_name.append(":");
+  host_name.append(port);
+  cout << host_name << endl;
+  //sprintf("%s:%d",host_name,port);
+  client_name = argv[3];
   //create connection to server
   Client client(grpc::CreateChannel(
-      "localhost:50032", grpc::InsecureChannelCredentials()));
+      host_name, grpc::InsecureChannelCredentials()));
   std::string reply = client.Login(client_name);
   std::cout << "Login State: " << reply << std::endl;
   //loop command til client enters CHAT mode
