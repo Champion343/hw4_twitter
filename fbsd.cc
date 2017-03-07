@@ -200,6 +200,9 @@ void placeIn(string chatMsg, deque<string>* last20, string reference)
 class FBServiceImpl final : public CRMasterServer::Service 
 {
 	
+	bool first = true;
+	int last = 0;
+	
 	// Login
     Status Login(ServerContext* context, const Request* request, Reply* reply) 
 	override 
@@ -289,6 +292,17 @@ class FBServiceImpl final : public CRMasterServer::Service
 	Status Chat(ServerContext* context, ServerReaderWriter<Message,Message>* stream) 
 	override
 	{
+		
+		if(first){
+			first = false;
+			google::protobuf::Timestamp* temptime = new google::protobuf::Timestamp();
+			struct timeval tv;
+			gettimeofday(&tv, NULL);
+			temptime->set_seconds(tv.tv_sec);
+			temptime->set_nanos(tv.tv_usec * 1000);
+			cout << google::protobuf::util::TimeUtil::ToString(*temptime) << endl;
+		}
+		
 		//initial call to chat, setup chat then while loop read/write
 		Message firstMsg, reply20;
 		stream->Read(&firstMsg);
@@ -371,7 +385,16 @@ class FBServiceImpl final : public CRMasterServer::Service
 					else
 						cout << "null stream" << endl; //follower has not called CHAT yet
 				}
-				google::protobuf::Timestamp msgtime = note.timestamp();
+				++last;
+				if(last == 10){
+				google::protobuf::Timestamp* temptime2 = new google::protobuf::Timestamp();
+				struct timeval tv;
+				gettimeofday(&tv, NULL);
+				temptime2->set_seconds(tv.tv_sec);
+				temptime2->set_nanos(tv.tv_usec * 1000);
+				cout << google::protobuf::util::TimeUtil::ToString(*temptime2) << endl;
+				}
+				/*google::protobuf::Timestamp msgtime = note.timestamp();
 				google::protobuf::Timestamp* temptime = new google::protobuf::Timestamp();
 				struct timeval tv;
 				gettimeofday(&tv, NULL);
@@ -391,7 +414,7 @@ class FBServiceImpl final : public CRMasterServer::Service
 				cout << google::protobuf::util::TimeUtil::ToString(msgtime) << " "
 					 << google::protobuf::util::TimeUtil::ToString(*temptime) << endl;
 				cout << t1 << endl << t2 << endl << "difference " << t2-t1 << endl;
-				cout << atof(s2.c_str()) - atof(s1.c_str()) << endl;
+				cout << atof(s2.c_str()) - atof(s1.c_str()) << endl;*/
 			}
 		}
 		file.close();
@@ -435,4 +458,3 @@ int main(int argc, char** argv)
   RunServer(server_address);
   return 0;
 }
-
