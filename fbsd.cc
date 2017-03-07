@@ -194,7 +194,7 @@ class FBServiceImpl final : public CRMasterServer::Service
 {
 	
 	// Login
-    Status Login(ServerContext* context, const Message* request, Reply* reply) 
+    Status Login(ServerContext* context, const Request* request, Reply* reply) 
 	override 
 	{
 		cout << "creating room: " << request->username() << endl;
@@ -206,7 +206,7 @@ class FBServiceImpl final : public CRMasterServer::Service
 	}
   
 	// List
-	Status List(ServerContext* context, const Message* request, ListReply* reply) 
+	Status List(ServerContext* context, const Request* request, ListReply* reply) 
 	override 
 	{
 		//list all chatrooms 
@@ -224,20 +224,20 @@ class FBServiceImpl final : public CRMasterServer::Service
 	}
 
 	// Join(able to join own room, not sure if crash)
-	Status Join(ServerContext* context, const Message* request, Reply* reply) 
+	Status Join(ServerContext* context, const Request* request, Reply* reply) 
 	override 
 	{
 		//add new friend to user, add user to new friend's followers
-		cout << request->username() + " tryna join "+request->msg() << endl;
+		cout << request->username() + " tryna join "+request->arguments(0) << endl;
 		int user, joining;
 		user = findName(request->username(), &chatRooms);
-		joining = findName(request->msg(), &chatRooms);
+		joining = findName(request->arguments(0), &chatRooms);
 		if( user < 0 || joining < 0)
 		{
 			reply->set_msg("join fail");
 			cout << "join fail1" << endl;
 		}
-		else if( chatRooms[user].addFriend(request->msg()) &&
+		else if( chatRooms[user].addFriend(request->arguments(0)) &&
 				 chatRooms[joining].addFollower(request->username()) )
 				 {
 					reply->set_msg("join success");
@@ -252,20 +252,20 @@ class FBServiceImpl final : public CRMasterServer::Service
 	}
 
 	// Leave
-	Status Leave(ServerContext* context, const Message* request, Reply* reply) 
+	Status Leave(ServerContext* context, const Request* request, Reply* reply) 
 	override 
 	{
 		//delete person from user's friends, delete user from person's followers
-		cout << request->username() << " tryna leave " << request->msg() << endl;
+		cout << request->username() << " tryna leave " << request->arguments(0) << endl;
 		int user, leaving;
 		user = findName(request->username(), &chatRooms);
-		leaving = findName(request->msg(), &chatRooms);
+		leaving = findName(request->arguments(0), &chatRooms);
 		if( user < 0 || leaving < 0)
 		{
 			cout << "leave fail1" << endl;
 			reply->set_msg("leave fail");
 		}
-		else if( chatRooms[user].unfriend(request->msg()) &&
+		else if( chatRooms[user].unfriend(request->arguments(0)) &&
 				 chatRooms[leaving].unfollowedBy(request->username()) )
 				 {
 			cout << "leave success" << endl;
