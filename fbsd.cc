@@ -373,16 +373,20 @@ class FBServiceImpl final : public CRMasterServer::Service
 				}
 				google::protobuf::Timestamp msgtime = note.timestamp();
 				google::protobuf::Timestamp* temptime = new google::protobuf::Timestamp();
-				temptime->set_seconds(time(NULL));
-				temptime->set_nanos(0);
-				unsigned long t1; 
-				unsigned long t2;
-				t1 = google::protobuf::util::TimeUtil::TimestampToMilliseconds(msgtime);
-				t2 = google::protobuf::util::TimeUtil::TimestampToMilliseconds(*temptime);
-				string s1= google::protobuf::util::TimeUtil::ToString(google::protobuf::util::TimeUtil::MillisecondsToDuration(
-					google::protobuf::util::TimeUtil::TimestampToMilliseconds(msgtime)));
-				string s2= google::protobuf::util::TimeUtil::ToString(google::protobuf::util::TimeUtil::MillisecondsToDuration(
-					google::protobuf::util::TimeUtil::TimestampToMilliseconds(*temptime)));
+				struct timeval tv;
+				gettimeofday(&tv, NULL);
+				temptime->set_seconds(tv.tv_sec);
+				temptime->set_nanos(tv.tv_usec * 1000);
+				//temptime->set_seconds(time(NULL));
+				//temptime->set_nanos(0);
+				google::protobuf::int64 t1; 
+			    google::protobuf::int64 t2;
+				t1 = google::protobuf::util::TimeUtil::TimestampToNanoseconds(msgtime);
+				t2 = google::protobuf::util::TimeUtil::TimestampToNanoseconds(*temptime);
+				string s1= google::protobuf::util::TimeUtil::ToString(google::protobuf::util::TimeUtil::NanosecondsToDuration(
+					google::protobuf::util::TimeUtil::TimestampToNanoseconds(msgtime)));
+				string s2= google::protobuf::util::TimeUtil::ToString(google::protobuf::util::TimeUtil::NanosecondsToDuration(
+					google::protobuf::util::TimeUtil::TimestampToNanoseconds(*temptime)));
 				cout << s1 << endl << s2 << endl;
 				cout << google::protobuf::util::TimeUtil::ToString(msgtime) << " "
 					 << google::protobuf::util::TimeUtil::ToString(*temptime) << endl;
