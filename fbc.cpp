@@ -35,15 +35,9 @@ Message MakeMessage(const std::string& username, const std::string& msg) {
 void reading(shared_ptr<ClientReaderWriter<Message,Message>> stream)
 {
 	Message server_message;
-	long incoming_time;
-	long current_time;
-	google::protobuf::Timestamp* timestamp = new google::protobuf::Timestamp();
-	while(stream->Read(&server_message)) {//blocking
-		timestamp->set_seconds(time(NULL));
-		timestamp->set_nanos(0);
-		current_time = timestamp->getSeconds();
+	while(stream->Read(&server_message)) {//blocking;
 		cout << server_message.username()<<": " <<server_message.msg() << endl;
-		incoming_time = server_message.timestamp()->WriteTo(cout);
+		
 	}
 }
 //Client object used for grpc calls
@@ -160,6 +154,8 @@ class Client {
 	stream->Write(client_message);
 	//loop through requesting user input and send message to server
 	unsigned int microseconds;
+	string input;
+	cin >> input;//wait before entering for loop
 	for(int i = 0; i <10; i++){
 	microseconds = 1000000 - i*100000;
 	usleep(microseconds);
