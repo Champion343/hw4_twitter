@@ -3,6 +3,8 @@
 #include <string>
 #include <thread>
 #include <grpc++/grpc++.h>
+#include <ctime>
+#include <unistd.h>
 
 #include "fbp.grpc.pb.h"
 
@@ -17,12 +19,31 @@ using fbp::CRMasterServer;
 using fbp::Request;
 using namespace std;
 
+//Helper function used to create a Message object given a username and message
+Message MakeMessage(const std::string& username, const std::string& msg) {
+  Message m;
+  m.set_username(username);
+  m.set_msg(msg);
+  google::protobuf::Timestamp* timestamp = new google::protobuf::Timestamp();
+  timestamp->set_seconds(time(NULL));
+  timestamp->set_nanos(0);
+  m.set_allocated_timestamp(timestamp);
+  return m;
+}
+
 //thread handles reading for bidirectional streaming
 void reading(shared_ptr<ClientReaderWriter<Message,Message>> stream)
 {
 	Message server_message;
+	long incoming_time;
+	long current_time;
+	google::protobuf::Timestamp* timestamp = new google::protobuf::Timestamp();
 	while(stream->Read(&server_message)) {//blocking
+		timestamp->set_seconds(time(NULL));
+		timestamp->set_nanos(0);
+		current_time = timestamp->getSeconds();
 		cout << server_message.username()<<": " <<server_message.msg() << endl;
+		incoming_time = server_message.timestamp()->WriteTo(cout);
 	}
 }
 //Client object used for grpc calls
@@ -134,14 +155,15 @@ class Client {
 	thread readMsg(reading, stream);
 	cout << "Begin Chatting..." << endl;
 	//remove anything left over from the command line
-	cin.ignore();
-	client_message.set_username(user);
+	client_message = MakeMessage(user, "");
 	//send initial message declaring username
 	stream->Write(client_message);
 	//loop through requesting user input and send message to server
-	while(1){
-    getline(cin, text);
-	client_message.set_msg(text);
+	unsigned int microseconds;
+	for(int i = 0; i <10; i++){
+	microseconds = 1000000 - i*100000;
+	usleep(microseconds);
+    client_message = MakeMessage(user, "message");
 	stream->Write(client_message);
 	}
 	//if we ever wanted an exit this would close the stream and exit Chat
@@ -165,7 +187,6 @@ int main(int argc, char** argv) {
   string port = argv[2];
   host_name.append(":");
   host_name.append(port);
-  cout << host_name << endl;
   //sprintf("%s:%d",host_name,port);
   client_name = argv[3];
   //create connection to server
