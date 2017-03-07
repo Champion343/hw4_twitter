@@ -14,6 +14,7 @@ using grpc::ServerBuilder;
 using grpc::ServerContext;
 using grpc::ServerReaderWriter;
 using grpc::Status;
+using fbp::Request;
 using fbp::Reply;
 using fbp::ListReply;
 using fbp::Message;
