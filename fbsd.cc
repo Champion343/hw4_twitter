@@ -6,9 +6,15 @@
 #include <vector>
 #include <deque>
 #include <ctime>
+#include <google/protobuf/util/time_util.h>
+#include <google/protobuf/timestamp.pb.h>
+#include <google/protobuf/duration.pb.h>
+
 #include <thread>
 #include "fbp.grpc.pb.h"
 
+using google::protobuf::Timestamp;
+using google::protobuf::Duration;
 using grpc::Server;
 using grpc::ServerBuilder;
 using grpc::ServerContext;
@@ -358,10 +364,30 @@ class FBServiceImpl final : public CRMasterServer::Service
 						continue;
 					cout << "writing" << endl;
 					if(chatRooms[k].stream != NULL)
+					{
 						chatRooms[k].stream->Write(note);
+						
+					}
 					else
 						cout << "null stream" << endl; //follower has not called CHAT yet
 				}
+				google::protobuf::Timestamp msgtime = note.timestamp();
+				google::protobuf::Timestamp* temptime = new google::protobuf::Timestamp();
+				temptime->set_seconds(time(NULL));
+				temptime->set_nanos(0);
+				unsigned long t1; 
+				unsigned long t2;
+				t1 = google::protobuf::util::TimeUtil::TimestampToMilliseconds(msgtime);
+				t2 = google::protobuf::util::TimeUtil::TimestampToMilliseconds(*temptime);
+				string s1= google::protobuf::util::TimeUtil::ToString(google::protobuf::util::TimeUtil::MillisecondsToDuration(
+					google::protobuf::util::TimeUtil::TimestampToMilliseconds(msgtime)));
+				string s2= google::protobuf::util::TimeUtil::ToString(google::protobuf::util::TimeUtil::MillisecondsToDuration(
+					google::protobuf::util::TimeUtil::TimestampToMilliseconds(*temptime)));
+				cout << s1 << endl << s2 << endl;
+				cout << google::protobuf::util::TimeUtil::ToString(msgtime) << " "
+					 << google::protobuf::util::TimeUtil::ToString(*temptime) << endl;
+				cout << t1 << endl << t2 << endl << "difference " << t2-t1 << endl;
+				cout << atof(s2.c_str()) - atof(s1.c_str()) << endl;
 			}
 		}
 		file.close();
