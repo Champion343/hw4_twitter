@@ -5,7 +5,9 @@
 #include <grpc++/grpc++.h>
 #include <ctime>
 #include <unistd.h>
-
+#include <google/protobuf/util/time_util.h>
+#include <google/protobuf/timestamp.pb.h>
+#include <google/protobuf/duration.pb.h>
 #include "fbp.grpc.pb.h"
 
 using grpc::Channel;
@@ -25,9 +27,16 @@ Message MakeMessage(const std::string& username, const std::string& msg) {
   m.set_username(username);
   m.set_msg(msg);
   google::protobuf::Timestamp* timestamp = new google::protobuf::Timestamp();
-  timestamp->set_seconds(time(NULL));
-  timestamp->set_nanos(0);
+  struct timeval tv;
+  gettimeofday(&tv, NULL);
+  timestamp->set_seconds(tv.tv_sec);
+  timestamp->set_nanos(tv.tv_usec * 1000);
+  //timestamp->set_seconds(time(NULL));
+  //timestamp->set_nanos(0);
   m.set_allocated_timestamp(timestamp);
+  google::protobuf::int64 t1; 
+	t1 = google::protobuf::util::TimeUtil::TimestampToNanoseconds(*timestamp);
+	cout << " timestamp " << t1 << endl;
   return m;
 }
 
@@ -158,6 +167,7 @@ class Client {
 	cin >> input;//wait before entering for loop
 	for(int i = 0; i <10; i++){
 	microseconds = 1000000 - i*100000;
+	
 	usleep(microseconds);
     client_message = MakeMessage(user, "message");
 	stream->Write(client_message);
