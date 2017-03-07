@@ -14,6 +14,7 @@ using fbp::Reply;
 using fbp::ListReply;
 using fbp::Message;
 using fbp::CRMasterServer;
+using fbp::Request;
 using namespace std;
 
 //thread handles reading for bidirectional streaming
@@ -33,7 +34,7 @@ class Client {
   //Login function send message containing username and receives response
   std::string Login(const std::string& user) {
     // Data we are sending to the server.
-    Message message;
+    Request message;
     message.set_username(user);
     // Container for the data we expect from the server.
     Reply reply;
@@ -55,9 +56,9 @@ class Client {
 	//joined then returns server response
     std::string Join(const std::string& user, std::string& room) {
     // Data we are sending to the server.
-    Message message;
+    Request message;
     message.set_username(user);
-	message.set_msg(room);
+	message.add_arguments(room);
     // Container for the data we expect from the server.
     Reply reply;
 
@@ -79,9 +80,9 @@ class Client {
 	//left then returns server response
     std::string Leave(const std::string& user, std::string& room) {
     // Data we are sending to the server.
-    Message message;
+    Request message;
     message.set_username(user);
-	message.set_msg(room);
+	message.add_arguments(room);
     // Container for the data we expect from the server.
     Reply reply;
 
@@ -102,7 +103,7 @@ class Client {
     
     ListReply List(const std::string& user) {
     // Data we are sending to the server.
-    Message message;
+    Request message;
     message.set_username(user);
     // Container for the data we expect from the server.
     ListReply reply;
