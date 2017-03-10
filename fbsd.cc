@@ -347,11 +347,12 @@ class FBServiceImpl final : public CRMasterServer::Service
 		string date;
 		string hms;
 		int k;
+		google::protobuf::Timestamp* temptime;
 		while (1) 
 		{   //read client's message
 			if(stream->Read(&note))//blocking
 			{
-				
+				//show when first message got here
 				if(first){
 					first = false;
 					google::protobuf::Timestamp* temptime = new google::protobuf::Timestamp();
@@ -387,7 +388,9 @@ class FBServiceImpl final : public CRMasterServer::Service
 						cout << "null stream" << endl; //follower has not called CHAT yet
 				}
 				++last;
+				//wait for 50 messages
 				if(last == 50){
+					
 				google::protobuf::Timestamp* temptime2 = new google::protobuf::Timestamp();
 				struct timeval tv;
 				gettimeofday(&tv, NULL);
