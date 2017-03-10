@@ -165,8 +165,9 @@ class Client {
 	unsigned int microseconds;
 	string input;
 	cin >> input;//wait before entering for loop
+	//here we send 50 messages
 	for(int i = 0; i <50; i++){
-	microseconds = 1000000;
+	microseconds = 500;//time interval
 	
 	usleep(microseconds);
     client_message = MakeMessage(user, "message");
