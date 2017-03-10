@@ -293,16 +293,6 @@ class FBServiceImpl final : public CRMasterServer::Service
 	override
 	{
 		
-		if(first){
-			first = false;
-			google::protobuf::Timestamp* temptime = new google::protobuf::Timestamp();
-			struct timeval tv;
-			gettimeofday(&tv, NULL);
-			temptime->set_seconds(tv.tv_sec);
-			temptime->set_nanos(tv.tv_usec * 1000);
-			cout << google::protobuf::util::TimeUtil::ToString(*temptime) << endl;
-		}
-		
 		//initial call to chat, setup chat then while loop read/write
 		Message firstMsg, reply20;
 		stream->Read(&firstMsg);
@@ -361,6 +351,17 @@ class FBServiceImpl final : public CRMasterServer::Service
 		{   //read client's message
 			if(stream->Read(&note))//blocking
 			{
+				
+				if(first){
+					first = false;
+					google::protobuf::Timestamp* temptime = new google::protobuf::Timestamp();
+					struct timeval tv;
+					gettimeofday(&tv, NULL);
+					temptime->set_seconds(tv.tv_sec);
+					temptime->set_nanos(tv.tv_usec * 1000);
+					cout << google::protobuf::util::TimeUtil::ToString(*temptime) << endl;
+				}
+		
 				lineMsg.clear();
 				//time stamp
 				nowtime = time(0);
@@ -386,7 +387,7 @@ class FBServiceImpl final : public CRMasterServer::Service
 						cout << "null stream" << endl; //follower has not called CHAT yet
 				}
 				++last;
-				if(last == 10){
+				if(last == 50){
 				google::protobuf::Timestamp* temptime2 = new google::protobuf::Timestamp();
 				struct timeval tv;
 				gettimeofday(&tv, NULL);
