@@ -3,11 +3,13 @@ syntax = "proto3";
 package fbp;
 
 service CRMasterServer { 
+    rpc Connect (Message) returns (Reply) {}
     rpc Login (Message) returns (Reply) {} 
     rpc List (Message) returns (ListReply) {} 
     rpc Join (Message) returns (Reply) {}
     rpc Leave (Message) returns (Reply) {}
     rpc Chat (stream Message) returns (stream Message) {} 
+	rpc Cast (Message) returns () {}
 } 
 
 message ListReply { 
