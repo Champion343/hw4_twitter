@@ -29,12 +29,12 @@
 
 syntax = "proto3";
 
-package hw2;
+package fbp;
 
 import "google/protobuf/timestamp.proto";
 
 // The messenger service definition.
-service MessengerServer {
+service CRMasterServer {
 
   rpc Login (Request) returns (Reply) {}
   rpc List (Request) returns (ListReply) {}
