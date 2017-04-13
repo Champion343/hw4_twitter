@@ -213,7 +213,7 @@ int main(int argc, char** argv) {
   string input;
   string room_name;
   string host_name = "128.194.143.156";
-  string port = "50032";
+  string port = "50031";
   host_name.append(":");
   host_name.append(port);
   //sprintf("%s:%d",host_name,port);

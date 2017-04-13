@@ -585,7 +585,7 @@ void RunServer(string server_address)
 
 int main(int argc, char** argv) 
 {
-  string server_address("0.0.0.0:50032");
+  string server_address("0.0.0.0:50031");
   if(argc == 2)
   {
 	  server_address = "0.0.0.0:"+(string)argv[1];
