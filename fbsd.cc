@@ -9,9 +9,11 @@
 #include <google/protobuf/util/time_util.h>
 #include <google/protobuf/timestamp.pb.h>
 #include <google/protobuf/duration.pb.h>
-
+ 
 #include <thread>
 #include "fbp.grpc.pb.h"
+
+#include <unistd.h>
 
 using google::protobuf::Timestamp;
 using google::protobuf::Duration;
@@ -25,7 +27,15 @@ using fbp::Reply;
 using fbp::ListReply;
 using fbp::Message;
 using fbp::CRMasterServer;
+
+using grpc::Channel;
+using grpc::ClientReaderWriter;
+using grpc::ClientContext;
+
 using namespace std;
+
+int logic[3] = {0,0,0};
+int portNum;
 
 //find exsiting name in a vector, get index
 int findName(string username, vector<string>* list)
@@ -196,12 +206,193 @@ void placeIn(string chatMsg, deque<string>* last20, string reference)
 	}
 }
 
+string assigned_Worker(int port, int next)
+{
+	switch(port)
+	{
+		case 5000:
+			break;
+	}
+}
+
+//Client object used for grpc calls
+class Client {
+ public:
+  Client(std::shared_ptr<Channel> channel)
+      : stub_(CRMasterServer::NewStub(channel)) {}
+
+  //update - signal to get room data
+  int Update() {
+	  // Container for the data we expect from the server.
+	Request msg;
+	Request reply;
+	ClientContext context;
+
+	// The actual RPC.
+	Status status = stub_->Update(&context, msg, &reply);
+	//fill in room
+	if(reply.username().compare("end of rooms") == 0)
+		return -1;
+	if(reply.username().compare("logic clock"))
+	{
+		for(int i=0; i<3; i++)
+			logic[i] = atoi(reply.arguments(i).c_str());
+		return 1;
+	}
+	int index = findName(reply.username(),&chatRooms);
+	if(index >=0)
+	if(reply.arguments(0).compare("followers"))
+	{
+		for(int i=1; i<reply.arguments_size(); i++)
+			chatRooms[index].followers.push_back(reply.arguments(i));
+	}
+	else if(reply.arguments(0).compare("following"))
+	{
+		for(int i=1; i<reply.arguments_size(); i++)
+			chatRooms[index].following.push_back(reply.arguments(i));
+	}
+	else if(reply.arguments(0).compare("joinTime"))
+	{
+		for(int i=1; i<reply.arguments_size(); i++)
+			chatRooms[index].joinTime.push_back(reply.arguments(i));
+	}
+	else //username
+	{
+		Room roomup(reply.username());
+		chatRooms.push_back(roomup);
+	}
+	return 1;
+  }
+  
+  //Cast - send updates to other workers
+  int Cast(Message fwd) {
+	// add logic clock
+	for(int i=0; i<3; i++)
+		fwd.add_clock(to_string(logic[i]));
+	// Container for the data we expect from the server.
+	Reply reply;
+	ClientContext context;
+
+	// The actual RPC.
+	Status status = stub_->Cast(&context, fwd, &reply);
+
+	// Act upon its status.
+	if (status.ok()) {
+	return 1;
+	} else {
+	std::cout << status.error_code() << ": " << status.error_message()
+			<< std::endl;
+	return -1;
+	}
+  }
+  
+ private:
+  std::unique_ptr<CRMasterServer::Stub> stub_;
+};
+
+
 //overrides of proto
 class FBServiceImpl final : public CRMasterServer::Service 
 {
 	
 	bool first = true;
 	int last = 0;
+	
+	//update a worker
+	Status Update(ServerContext* context, const Request* request, Request* roomSend) 
+	override 
+	{
+		int index = atoi(request->username().c_str());
+		if(index >= (int)chatRooms.size())
+			roomSend->set_username("end of rooms");
+		else
+			roomSend->set_username(chatRooms.at(index).username);
+		
+		if(request->arguments(0).compare("followers"))
+		{
+			for(int i=0; i<(int)chatRooms[index].followers.size(); i++)
+				roomSend->add_arguments(chatRooms[index].followers.at(i));
+		}
+		else if(request->arguments(0).compare("following"))
+		{
+			for(int i=0; i<(int)chatRooms[index].following.size(); i++)
+				roomSend->add_arguments(chatRooms[index].following.at(i));
+		}
+		else if(request->arguments(0).compare("joinTime"))
+		{
+			for(int i=0; i<(int)chatRooms[index].joinTime.size(); i++)
+				roomSend->add_arguments(chatRooms[index].joinTime.at(i));
+		}
+		else //username
+		{
+			
+		}
+			
+		return Status::OK;
+		}
+	
+	//master server tells me to restart a worker
+	Status Reset(ServerContext* context, const Request* request, Reply* reply) 
+	override 
+	{
+		cout << "reset" << request->username() << request->arguments(0) << endl;
+		return Status::OK;
+	}
+	
+	//ping from master to check if im alive
+	Status Ping(ServerContext* context, const Request* request, Reply* reply) 
+	override 
+	{
+		cout << "ping" << endl;
+		return Status::OK;
+	}
+	
+	// Cast - recieve updates from other workers
+    Status Cast(ServerContext* context, const Message* fwd, Reply* reply) 
+	override 
+	{
+		//add message to file
+		fstream file;
+		string user = fwd->username();
+		//open file with truncation for writing
+		file.open(user + ".txt", fstream::out | fstream::trunc);
+		if(file.is_open())
+			cout << "opened file for writing"<< endl;
+		else
+			cout << "NO OPEN FILE for writing (╯°□°)╯︵ ┻━┻" << endl;
+		string lineMsg;
+		time_t nowtime;
+		string date;
+		string hms;
+		int k;
+		google::protobuf::Timestamp* temptime;
+		lineMsg.clear();
+		//time stamp
+		nowtime = time(0);
+		date = ctime(&nowtime);
+		hms = date.substr(date.find(":") -2, date.find_last_of(":") +3 - (date.find(":") -2));
+		//format: username time message
+		lineMsg = user + ' ' + hms + ' ' + fwd->msg();
+		file << lineMsg << endl;
+		cout << "added to file: " << lineMsg << endl;
+		//loop thru followers and post to their screens
+		
+		file.close();
+		cout << "updated file" << endl;
+		//update logic clock
+		for(int i=0; i<3; i++)
+			if(logic[i] < atoi(fwd->clock(i).c_str()))
+				logic[i] = atoi(fwd->clock(i).c_str());
+		//open file for writing
+		file.open("logicClock.txt", fstream::out);
+		if(file.is_open())
+			cout << "opened file for writing"<< endl;
+		else
+			cout << "NO OPEN FILE for writing (╯°□°)╯︵ ┻━┻" << endl;
+		for(int i=0; i<3; i++)
+			file << logic[i] << endl;
+		return Status::OK;	
+	}
 	
 	// Login
     Status Login(ServerContext* context, const Request* request, Reply* reply) 
@@ -226,6 +417,7 @@ class FBServiceImpl final : public CRMasterServer::Service
 		}
 		//list all rooms joined by user
 		int index = findName(request->username(), &chatRooms);
+		if(index >=0)
 		for(int i=0; i < (int)chatRooms[index].following.size(); i++)
 		{
 			reply->add_joined_roomes(chatRooms[index].following[i]);
@@ -371,6 +563,27 @@ class FBServiceImpl final : public CRMasterServer::Service
 				//format: username time message
 				lineMsg = user + ' ' + hms + ' ' + note.msg();
 				file << lineMsg << endl;
+				//send to another worker
+				Message fwd;
+				fwd.set_username(user);
+				fwd.set_msg(lineMsg);
+				string host_name = assigned_Worker(portNum,0);
+				Client worker(grpc::CreateChannel(host_name, grpc::InsecureChannelCredentials()));
+				
+				if(worker.Cast(fwd) < 0)
+				{
+					if(host_name.compare("worker 4") == 0)//only worker is down, move to buffer
+					{
+					
+					}
+					string host_name = assigned_Worker(portNum,1);
+					Client worker1(grpc::CreateChannel(host_name, grpc::InsecureChannelCredentials()));
+					if(worker1.Cast(fwd) < 0)
+					{
+						//server is down, move to buffer
+					}
+				}
+				
 				cout << "added to file: " << lineMsg << endl;
 				//loop thru followers and post to their screens
 				for(int i=0; i < (int)chatRooms[index].followers.size(); i++)
@@ -398,27 +611,6 @@ class FBServiceImpl final : public CRMasterServer::Service
 				temptime2->set_nanos(tv.tv_usec * 1000);
 				cout << google::protobuf::util::TimeUtil::ToString(*temptime2) << endl;
 				}
-				/*google::protobuf::Timestamp msgtime = note.timestamp();
-				google::protobuf::Timestamp* temptime = new google::protobuf::Timestamp();
-				struct timeval tv;
-				gettimeofday(&tv, NULL);
-				temptime->set_seconds(tv.tv_sec);
-				temptime->set_nanos(tv.tv_usec * 1000);
-				//temptime->set_seconds(time(NULL));
-				//temptime->set_nanos(0);
-				google::protobuf::int64 t1; 
-			    google::protobuf::int64 t2;
-				t1 = google::protobuf::util::TimeUtil::TimestampToNanoseconds(msgtime);
-				t2 = google::protobuf::util::TimeUtil::TimestampToNanoseconds(*temptime);
-				string s1= google::protobuf::util::TimeUtil::ToString(google::protobuf::util::TimeUtil::NanosecondsToDuration(
-					google::protobuf::util::TimeUtil::TimestampToNanoseconds(msgtime)));
-				string s2= google::protobuf::util::TimeUtil::ToString(google::protobuf::util::TimeUtil::NanosecondsToDuration(
-					google::protobuf::util::TimeUtil::TimestampToNanoseconds(*temptime)));
-				cout << s1 << endl << s2 << endl;
-				cout << google::protobuf::util::TimeUtil::ToString(msgtime) << " "
-					 << google::protobuf::util::TimeUtil::ToString(*temptime) << endl;
-				cout << t1 << endl << t2 << endl << "difference " << t2-t1 << endl;
-				cout << atof(s2.c_str()) - atof(s1.c_str()) << endl;*/
 			}
 		}
 		file.close();
@@ -448,17 +640,64 @@ void RunServer(string server_address)
   server->Wait();
 }
 
+vector<Client*> workers;
+
 int main(int argc, char** argv) 
 {
   string server_address("0.0.0.0:50032");
-  if(argc == 2)
+  if(argc == 2)//restart
   {
 	  server_address = "0.0.0.0:"+(string)argv[1];
+	  
+	  //Client worker1(grpc::CreateChannel(
+		//host_name, grpc::InsecureChannelCredentials()));
   }
   else
   {
 	cout << "default port 0.0.0.0:50032" << endl;
   }
   RunServer(server_address);
+  cout << "ok" << endl;
+  //create connection to server, make for 6 workers, 1master?
+  
+  //workers.push_back(&client);
+  //std::string reply = client.Login(client_name);
+  int fnum=0;
+  int pnum = 0;
+  if(argc == 3)//start up
+  {
+	  fnum = atoi(argv[2]);
+	  pnum = atoi(argv[1]);
+  }
+  //set addr for parent
+  cout <<"parent" << endl;
+  if(fnum > 0)//3workers
+  {
+	if(fork()==0)//set addr for child
+	{//set addr for other workers
+		cout << "ch1" << endl;
+		pnum++;
+	}
+	else
+	{
+		if(fork()==0)//Set address for parent’s other child
+		{//set addr for other workers
+			cout << "ch2" << endl;
+			pnum+=2;
+		}
+	}
+  }
+  else
+  {
+	  
+  }
+  portNum = pnum;
+  cout << "ok" << endl;
+  string host_name = "0.0.0.0";
+  string port = to_string(pnum);
+  host_name.append(":");
+  host_name.append(port);
+  Client worker1(grpc::CreateChannel(
+	host_name, grpc::InsecureChannelCredentials()));
   return 0;
 }
