@@ -215,7 +215,6 @@ class Client {
 
     // The actual RPC.
     Status status = stub_->Connect(&context, message, &reply);
-
     // Act upon its status.
     if (status.ok()) {
       return "SUCCESS";
@@ -298,30 +297,43 @@ class FBServiceImpl final : public CRMasterServer::Service
 			worker_states[6] = false;
 		else
 			worker_states[6] = true;
+		cont = true;
 		while(cont){
 		if(workers[worker_iterator] == 0 && worker_states[0] == true){
 			//send ip and port
+			cont = false;
 			reply->set_msg("128.194.143.215:50035");
 		}else if(workers[worker_iterator] == 1 && worker_states[1] == true){
 			//send ip and port
 			reply->set_msg("128.194.143.215:50036");
+			cont = false;
 		}else if(workers[worker_iterator] == 2 && worker_states[2] == true){
 			//send ip and port
 			reply->set_msg("128.194.143.215:50037");
+			cont = false;
 		}else if(workers[worker_iterator] == 3 && worker_states[3] == true){
 			//send ip and port
 			reply->set_msg("128.194.143.156:50038");
+			cont = false;
 		}else if(workers[worker_iterator] == 4 && worker_states[4] == true){
 			//send ip and port
 			reply->set_msg("128.194.143.213:50039");
+			cont = false;
 		}else if(workers[worker_iterator] == 5 && worker_states[5] == true){
 			//send ip and port
 			reply->set_msg("128.194.143.213:50040");
+			cont = false;
 		}else if(workers[worker_iterator] == 6 && worker_states[6] == true){
 			//send ip and port
 			reply->set_msg("128.194.143.213:50041");
+			cont = false;
 		}
 		worker_iterator++;
+		if(worker_iterator == 7){
+			reply->set_msg("RPC failed.");
+			worker_iterator = 0;
+			cont = false;
+		}
 		}
 		return Status::OK;
 	}

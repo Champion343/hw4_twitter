@@ -54,7 +54,7 @@ class Client {
  public:
   Client(std::shared_ptr<Channel> channel)
       : stub_(CRMasterServer::NewStub(channel)) {}
-
+  //~Client();
   //Login function send message containing username and receives response
   std::string Login(const std::string& user) {
     // Data we are sending to the server.
@@ -125,6 +125,28 @@ class Client {
     }
   }
     
+	  std::string Connect() {
+    // Data we are sending to the server.
+    Request message;
+    // Container for the data we expect from the server.
+    Reply reply;
+
+    ClientContext context;
+
+    // The actual RPC.
+    Status status = stub_->Connect(&context, message, &reply);
+
+    // Act upon its status.
+    if (status.ok()) {
+      return reply.msg();
+    } else {
+      std::cout << status.error_code() << ": " << status.error_message()
+                << std::endl;
+      return "RPC failed";
+    }
+  }
+    
+	
     ListReply List(const std::string& user) {
     // Data we are sending to the server.
     Request message;
@@ -190,16 +212,20 @@ int main(int argc, char** argv) {
   string client_name;
   string input;
   string room_name;
-  string host_name = argv[1];
-  string port = argv[2];
+  string host_name = "128.194.143.156";
+  string port = "50032";
   host_name.append(":");
   host_name.append(port);
   //sprintf("%s:%d",host_name,port);
-  client_name = argv[3];
+  client_name = argv[1];
   //create connection to server
-  Client client(grpc::CreateChannel(
-      host_name, grpc::InsecureChannelCredentials()));
-  std::string reply = client.Login(client_name);
+  Client masterClient(grpc::CreateChannel(
+  host_name, grpc::InsecureChannelCredentials()));
+  host_name = masterClient.Connect();
+  cout << host_name<<endl;
+  Client workerClient(grpc::CreateChannel(
+  host_name, grpc::InsecureChannelCredentials()));
+  string reply = workerClient.Login(client_name);
   std::cout << "Login State: " << reply << std::endl;
   //loop command til client enters CHAT mode
   while(input != "CHAT"){
@@ -207,7 +233,7 @@ int main(int argc, char** argv) {
 	  cin >> input;
 	  //Calls List function then prints all rooms and all rooms joined by client
 	  if(input == "LIST"){
-		lreply = client.List(client_name);
+		lreply = workerClient.List(client_name);
 		cout << "All Rooms:" << endl;
 		for(int i = 0; i< lreply.all_roomes_size(); ++i)
 			cout << lreply.all_roomes(i) << endl;
@@ -218,18 +244,18 @@ int main(int argc, char** argv) {
 	  //Calls join function the prints if successful or not
 	  else if(input == "JOIN"){
 			cin >> room_name;
-			reply = client.Join(client_name, room_name);
+			reply = workerClient.Join(client_name, room_name);
 			std::cout << "Join: " << reply << std::endl;
 		}
 	  //Calls leave function the prints if successful or not
 	  else if (input  =="LEAVE"){
 		cin >> room_name;
-		reply = client.Leave(client_name, room_name);
+		reply = workerClient.Leave(client_name, room_name);
 		std::cout << "Leave: " << reply << std::endl;
 	  }
 	  //Calls chat function and enters chat mode
 	  else if(input == "CHAT"){
-		client.Chat(client_name);
+		workerClient.Chat(client_name);
 	  }
 	  else
 		  cout << "Not a command..." << endl;
