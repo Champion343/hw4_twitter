@@ -2,6 +2,7 @@
 #include <memory>
 #include <string>
 #include <fstream>
+#include <sstream>
 #include <grpc++/grpc++.h>
 #include <vector>
 #include <deque>
@@ -224,6 +225,31 @@ class Client {
       return "FAIL";
     }
   }
+  
+  std::string Reset(int num, string host_addr) {
+    // Data we are sending to the server.
+    Request message;
+	stringstream ss;
+	ss << num;
+	string s = ss.str();
+	message.set_username(host_addr);
+	message.add_arguments(s);
+    // Container for the data we expect from the server.
+    Reply reply;
+
+    ClientContext context;
+
+    // The actual RPC.
+    Status status = stub_->Reset(&context, message, &reply);
+    // Act upon its status.
+    if (status.ok()) {
+      return "SUCCESS";
+    } else {
+      std::cout << status.error_code() << ": " << status.error_message()
+                << std::endl;
+      return "FAIL";
+    }
+  }
 	  
  private:
   std::unique_ptr<CRMasterServer::Stub> stub_;
@@ -237,19 +263,52 @@ string checkWorker(string host_name){
 	return reply;
 }
 
-/*void contactWorker(string hostname){
-	
-}*/
+//tell a worker to reset another worker
+string resetWorker(int worker_num, string host_name, string reset_addr){
+	Client client(grpc::CreateChannel(
+    host_name, grpc::InsecureChannelCredentials()));
+	string reply = client.Reset(worker_num,reset_addr);
+	return reply;
+}
 
 //run by thread to keep workers going
 void workerStatus(){
-	string workerHosts[7] = {"128.194.143.215:50035","128.194.143.215:50036","128.194.143.215:50037","128.194.143.156:50038",
+	string workerHosts[7] = {"128.194.143.215:50035","128.194.143.215:50036","128.194.143.215:50037","0.0.0.0:50038",
 					  "128.194.143.213:50039","128.194.143.213:50040","128.194.143.213:50041"};
+	bool workerStates[7] = {true,true,true,true,true,true,true};
 	while(true){
-	sleep(5);
-	for(int i = 0;i<7;++i)
-		if (checkWorker(workerHosts[i]) == "FAIL")
-			cout <<"fail k";
+	sleep(10);
+	for(int i = 1;i<8;++i){
+		if (checkWorker(workerHosts[i-1]) == "FAIL"){
+			cout <<"worker: "<< i << " is down..."<<endl;
+			workerStates[i-1] = false;
+			cout << "Resetting worker: " << i << "..."<<endl;
+			if(i == 1){
+			cout << "resetWorker(i,workerHosts[i],workerHosts[i-1])" << endl;
+			}
+			if(i == 2){
+			cout << "resetWorker(i,workerHosts[i],workerHosts[i-1])" << endl;
+			}
+			if(i == 3){
+			cout << "resetWorker(i,workerHosts[i-2],workerHosts[i-1])" << endl;
+			}
+			if(i == 4){
+			cout << "code to reset " << endl;
+			}
+			if(i == 5){
+			cout << "resetWorker(i,workerHosts[i-2],workerHosts[i-1])" << endl;
+			}
+			if(i == 6){
+			cout << "resetWorker(i,workerHosts[i-2],workerHosts[i-1])" << endl;
+			}
+			if(i == 7){
+			cout << "resetWorker(i,workerHosts[i-2],workerHosts[i-1])" << endl;
+			}
+		} else{
+			workerStates[i-1] = true;
+			cout <<"worker: "<< i << " is running..."<<endl;
+		}
+	}
 	}
 }
 
@@ -585,18 +644,21 @@ void RunServer(string server_address)
 
 int main(int argc, char** argv) 
 {
-  string server_address("0.0.0.0:50031");
-  if(argc == 2)
-  {
-	  server_address = "0.0.0.0:"+(string)argv[1];
+  string server_address;
+  /*server_address = "0.0.0.0:50032";
+  if(fork() == 0){
+	  server_address = "0.0.0.0:50033";
   }
-  else
-  {
-	cout << "default port 0.0.0.0:50032" << endl;
-  }
+  else{
+	  if(fork() == 0)
+		  server_address = "0.0.0.0:50034";
+  }*/
+  //if(master){
+  server_address = "0.0.0.0:50031";
+  //}
   //if master
   //check if workers are running and begins reboot by contacting other workers on the same machine
-  //thread workerCheckerThread(workerStatus);
+  thread workerCheckerThread(workerStatus);
   RunServer(server_address);
   return 0;
 }
