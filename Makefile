@@ -51,7 +51,7 @@ PROTOS_PATH = ./
 
 vpath %.proto $(PROTOS_PATH)
 
-all: system-check fbsd fbc
+all: system-check fbsd master fbc
 
 fbc: fbp.pb.o fbp.grpc.pb.o fbc.o
 	$(CXX) $^ $(LDFLAGS) -o $@
@@ -59,6 +59,9 @@ fbc: fbp.pb.o fbp.grpc.pb.o fbc.o
 fbsd: fbp.pb.o fbp.grpc.pb.o fbsd.o
 	$(CXX) $^ $(LDFLAGS) -o $@
 
+master: fbp.pb.o fbp.grpc.pb.o master.o
+	$(CXX) $^ $(LDFLAGS) -o $@
+	
 .PRECIOUS: %.grpc.pb.cc
 %.grpc.pb.cc: %.proto
 	$(PROTOC) -I $(PROTOS_PATH) --grpc_out=. --plugin=protoc-gen-grpc=$(GRPC_CPP_PLUGIN_PATH) $<
