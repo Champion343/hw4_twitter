@@ -226,6 +226,26 @@ class Client {
     }
   }
   
+  string Master(){
+	  // Data we are sending to the server.
+    Reply message;
+    // Container for the data we expect from the server.
+    Reply reply;
+	
+    ClientContext context;
+
+    // The actual RPC.
+    Status status = stub_->Master(&context, message, &reply);
+    // Act upon its status.
+    if (status.ok()) {
+      return reply.msg();
+    } else {
+      std::cout << status.error_code() << ": " << status.error_message()
+                << std::endl;
+      return "FAIL";
+    }
+  }
+  
   std::string Reset(string host_addr) {
     // Data we are sending to the server.
     Request message;
@@ -250,14 +270,9 @@ class Client {
  private:
   std::unique_ptr<CRMasterServer::Stub> stub_;
 };
-//consensus algorithm
-void consensus(){
-	
-}
 
 //Check if a worker is still up	  
 string checkWorker(string host_name){
-	cout << "create channel" <<endl;
 	Client client(grpc::CreateChannel(
     host_name, grpc::InsecureChannelCredentials()));
 	cout << "PING" << endl;
@@ -410,7 +425,27 @@ class FBServiceImpl final : public CRMasterServer::Service
 			reply->set_msg("server no created room");
 		return Status::OK;	
 	}
-  
+	
+		// Master
+    Status Master(ServerContext* context, const Reply* request, Reply* reply) 
+	override 
+	{
+		int decimal = 50099;
+		std::string::size_type sz;
+		decimal = std::stoi(request->msg(), &sz);
+		if(50032 > decimal){
+			reply->set_msg("Master");
+		}
+		else
+			reply->set_msg("Not master");
+		return Status::OK;	
+	}
+		// Ping
+    Status Ping(ServerContext* context, const Request* request, Reply* reply) 
+	override 
+	{
+		return Status::OK;	
+	}  
 	// List
 	Status List(ServerContext* context, const Request* request, ListReply* reply) 
 	override 
@@ -478,7 +513,7 @@ class FBServiceImpl final : public CRMasterServer::Service
 					reply->set_msg("leave success");
 				 }
 		else{
-			cout << "leave fail2" << endl;
+			cout << "leave fail" << endl;
 			reply->set_msg("leave fail");
 		}
 		return Status::OK;
@@ -653,6 +688,11 @@ void RunServer(string server_address)
   server->Wait();
 }
 
+//consensus algorithm
+void consensus(string addr){
+	RunServer(addr);
+};
+
 int main(int argc, char** argv) 
 {
   string server_address;
@@ -665,12 +705,71 @@ int main(int argc, char** argv)
 		  server_address = "0.0.0.0:50034";
   }*/
   //if(master){
-  server_address = "0.0.0.0:50031";
+  server_address = "0.0.0.0:";
+  string port = argv[1];
+  cout << port <<endl;
+  server_address.append(port);
+  for(int i = 0; i <argc; ++i)
+  cout << "argument " << i << " = "<<argv[i] << endl;
   //}
   //if master
   //check if workers are running and begins reboot by contacting other workers on the same machine
-  thread cons(consensus);
-  thread workerCheckerThread(workerStatus);
-  RunServer(server_address);
+  thread cons(consensus,server_address);
+  string host_name1;
+  string host_name2;
+    bool master;
+	string arg2 = argv[2];
+  string master_addr = "0.0.0.0:50031";
+  if (arg2 == "0")
+	  master = false;
+  if(arg2 == "true"){
+	  cout << "starting master" <<endl;
+	  master = true;
+	  thread masterThread(consensus,master_addr);
+  }
+  if(port == "50032"){
+	  host_name1 = "0.0.0.0:50033";
+	  host_name2 = "0.0.0.0:50034";
+  }
+  if(port == "50033"){
+	  host_name1 = "0.0.0.0:50034";
+	  host_name2 = "0.0.0.0:50032";
+  }
+  if(port == "50034"){
+	  host_name1 = "0.0.0.0:50032";
+	  host_name2 = "0.0.0.0:50033";
+  }
+  if (master == false){
+	  cout << "server start" <<endl;
+	  thread cons(consensus,server_address);
+  }
+	sleep(20);  
+  while(true){
+	sleep(2);
+	Client client1(grpc::CreateChannel(
+    host_name1, grpc::InsecureChannelCredentials()));
+	Client client2(grpc::CreateChannel(
+    host_name2, grpc::InsecureChannelCredentials()));
+	string reply = client1.Ping();
+	cout << "reply: " << reply << endl;
+	if(reply == "FAIL"){
+	reply = client2.Master();
+	if(reply == "Master")
+		thread masterThread(RunServer,"0.0.0.0:50031");
+	}
+	reply = client2.Ping();
+	if(reply == "FAIL"){
+	cout << "master"<<endl;
+	reply = client1.Master();
+	if(reply == "Master" && master == false){
+		master = true;
+		cout << "thread master"<<endl;
+		thread masterThread(RunServer,"0.0.0.0:50031");
+	}
+	}
+	cout << "reply: " << reply << endl;
+	//thread workerCheckerThread(workerStatus);
+	//thread (RunServer,server_address);
+  }
   return 0;
 }
