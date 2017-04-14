@@ -170,7 +170,7 @@ class Client {
   }
   //Chat function opens a bidirectional stream to the server then sends
   //its username and begins reading and writing to the server
-  void Chat(const std::string& user){
+   void Chat(const std::string& user){
 	ClientContext context;
 	//bidirectional streaming
 	std::shared_ptr<ClientReaderWriter<Message,Message>> stream(stub_->Chat(&context));
@@ -180,19 +180,14 @@ class Client {
 	thread readMsg(reading, stream);
 	cout << "Begin Chatting..." << endl;
 	//remove anything left over from the command line
-	client_message = MakeMessage(user, "");
+	cin.ignore();
+	client_message.set_username(user);
 	//send initial message declaring username
 	stream->Write(client_message);
 	//loop through requesting user input and send message to server
-	unsigned int microseconds;
-	string input;
-	cin >> input;//wait before entering for loop
-	//here we send 50 messages
-	for(int i = 0; i <50; i++){
-	microseconds = 500;//time interval
-	
-	usleep(microseconds);
-    client_message = MakeMessage(user, "message");
+	while(1){
+    getline(cin, text);
+	client_message.set_msg(text);
 	stream->Write(client_message);
 	}
 	//if we ever wanted an exit this would close the stream and exit Chat

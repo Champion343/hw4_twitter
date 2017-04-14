@@ -215,7 +215,7 @@ class Client {
     ClientContext context;
 
     // The actual RPC.
-    Status status = stub_->Connect(&context, message, &reply);
+    Status status = stub_->Ping(&context, message, &reply);
     // Act upon its status.
     if (status.ok()) {
       return "SUCCESS";
@@ -226,14 +226,10 @@ class Client {
     }
   }
   
-  std::string Reset(int num, string host_addr) {
+  std::string Reset(string host_addr) {
     // Data we are sending to the server.
     Request message;
-	stringstream ss;
-	ss << num;
-	string s = ss.str();
 	message.set_username(host_addr);
-	message.add_arguments(s);
     // Container for the data we expect from the server.
     Reply reply;
 
@@ -254,55 +250,65 @@ class Client {
  private:
   std::unique_ptr<CRMasterServer::Stub> stub_;
 };
+//consensus algorithm
+void consensus(){
+	
+}
 
 //Check if a worker is still up	  
 string checkWorker(string host_name){
+	cout << "create channel" <<endl;
 	Client client(grpc::CreateChannel(
     host_name, grpc::InsecureChannelCredentials()));
+	cout << "PING" << endl;
 	string reply = client.Ping();
 	return reply;
 }
 
 //tell a worker to reset another worker
-string resetWorker(int worker_num, string host_name, string reset_addr){
+string resetWorker(string host_name, string reset_addr){
+	cout << "reset worker" <<endl;
 	Client client(grpc::CreateChannel(
     host_name, grpc::InsecureChannelCredentials()));
-	string reply = client.Reset(worker_num,reset_addr);
+	string reply = client.Reset(reset_addr);
 	return reply;
 }
 
-//run by thread to keep workers going
+
+//run by thread to keep workers going pings each worker and if a response is
+//not received will contact another worker to reboot the unresponsive worker
 void workerStatus(){
-	string workerHosts[7] = {"128.194.143.215:50035","128.194.143.215:50036","128.194.143.215:50037","0.0.0.0:50038",
+	string workerHosts[7] = {"128.194.143.215:50035","128.194.143.215:50036","128.194.143.215:50037","0.0.0.0:50040",
 					  "128.194.143.213:50039","128.194.143.213:50040","128.194.143.213:50041"};
 	bool workerStates[7] = {true,true,true,true,true,true,true};
 	while(true){
 	sleep(10);
 	for(int i = 1;i<8;++i){
+		cout << "checkWorker" << endl;
 		if (checkWorker(workerHosts[i-1]) == "FAIL"){
 			cout <<"worker: "<< i << " is down..."<<endl;
 			workerStates[i-1] = false;
 			cout << "Resetting worker: " << i << "..."<<endl;
 			if(i == 1){
-			cout << "resetWorker(i,workerHosts[i],workerHosts[i-1])" << endl;
+			cout << resetWorker(workerHosts[i],workerHosts[i-1]) << endl;
 			}
 			if(i == 2){
-			cout << "resetWorker(i,workerHosts[i],workerHosts[i-1])" << endl;
+			cout << resetWorker(workerHosts[i],workerHosts[i-1]) << endl;
 			}
 			if(i == 3){
-			cout << "resetWorker(i,workerHosts[i-2],workerHosts[i-1])" << endl;
+			cout << resetWorker(workerHosts[i-3],workerHosts[i-1]) << endl;
 			}
 			if(i == 4){
-			cout << "code to reset " << endl;
+			cout << "master reboot worker 4" << endl;
 			}
 			if(i == 5){
-			cout << "resetWorker(i,workerHosts[i-2],workerHosts[i-1])" << endl;
+			cout << resetWorker(workerHosts[i],workerHosts[i-1]) << endl;
 			}
 			if(i == 6){
-			cout << "resetWorker(i,workerHosts[i-2],workerHosts[i-1])" << endl;
+			cout << resetWorker(workerHosts[i],workerHosts[i-1]) << endl;
 			}
 			if(i == 7){
-			cout << "resetWorker(i,workerHosts[i-2],workerHosts[i-1])" << endl;
+			cout << resetWorker(workerHosts[i-3],workerHosts[i-1]) << endl;
 			}
 		} else{
 			workerStates[i-1] = true;
@@ -319,8 +325,7 @@ class FBServiceImpl final : public CRMasterServer::Service
 	bool first = true;
 	int last = 0;
 	bool cont = true;
-	int worker_iterator = 0;
-	int workers[7] = {0,0,0,0,0,0,0};
+	int worker_iterator = 1;
 	bool worker_states[7] = {true,true,true,true,true,true,true};
 		// Connect client to a worker
     Status Connect(ServerContext* context, const Request* message, Reply* reply) 
@@ -340,10 +345,12 @@ class FBServiceImpl final : public CRMasterServer::Service
 			worker_states[2] = false;
 		else
 			worker_states[2] = true;
-		if(checkWorker("128.194.143.156:50038") == "FAIL")
+		if(checkWorker("128.194.143.156:50040") == "FAIL"){
 			worker_states[3] = false;
-		else
+		}
+		else{
 			worker_states[3] = true;
+		}
 		if(checkWorker("128.194.143.213:50039") == "FAIL")
 			worker_states[4] = false;
 		else
@@ -354,45 +361,40 @@ class FBServiceImpl final : public CRMasterServer::Service
 			worker_states[5] = true;
 		if(checkWorker("128.194.143.213:50041") == "FAIL")
 			worker_states[6] = false;
-		else
+		else 
 			worker_states[6] = true;
 		cont = true;
 		while(cont){
-		if(workers[worker_iterator] == 0 && worker_states[0] == true){
+		if((worker_iterator%7) == 1 && worker_states[0] == true){
 			//send ip and port
 			cont = false;
 			reply->set_msg("128.194.143.215:50035");
-		}else if(workers[worker_iterator] == 1 && worker_states[1] == true){
+		}if((worker_iterator%7) == 2 && worker_states[1] == true){
 			//send ip and port
 			reply->set_msg("128.194.143.215:50036");
 			cont = false;
-		}else if(workers[worker_iterator] == 2 && worker_states[2] == true){
+		}if((worker_iterator%7) == 3 && worker_states[2] == true){
 			//send ip and port
 			reply->set_msg("128.194.143.215:50037");
 			cont = false;
-		}else if(workers[worker_iterator] == 3 && worker_states[3] == true){
+		}if((worker_iterator%7) == 4 && worker_states[3] == true){
 			//send ip and port
-			reply->set_msg("128.194.143.156:50038");
+			reply->set_msg("128.194.143.156:50040");
 			cont = false;
-		}else if(workers[worker_iterator] == 4 && worker_states[4] == true){
+		}if((worker_iterator%7) == 5 && worker_states[4] == true){
 			//send ip and port
 			reply->set_msg("128.194.143.213:50039");
 			cont = false;
-		}else if(workers[worker_iterator] == 5 && worker_states[5] == true){
+		}if((worker_iterator%7) == 6 && worker_states[5] == true){
 			//send ip and port
 			reply->set_msg("128.194.143.213:50040");
 			cont = false;
-		}else if(workers[worker_iterator] == 6 && worker_states[6] == true){
+		}if((worker_iterator%7) == 0 && worker_states[6] == true){
 			//send ip and port
 			reply->set_msg("128.194.143.213:50041");
 			cont = false;
 		}
 		worker_iterator++;
-		if(worker_iterator == 7){
-			reply->set_msg("RPC failed.");
-			worker_iterator = 0;
-			cont = false;
-		}
 		}
 		return Status::OK;
 	}
@@ -482,6 +484,15 @@ class FBServiceImpl final : public CRMasterServer::Service
 		return Status::OK;
 	}
 
+	Status Time(ServerContext* context, const Reply* request, Reply* reply){
+		time_t nowtime = time(0);
+		string date = ctime(&nowtime);
+		string hms = date.substr(date.find(":") -2, date.find_last_of(":") +3 - (date.find(":") -2));
+		cout << hms <<endl;
+		reply->set_msg(hms);
+		return Status :: OK;
+	}
+	
 	// Chat
 	Status Chat(ServerContext* context, ServerReaderWriter<Message,Message>* stream) 
 	override
@@ -658,6 +669,7 @@ int main(int argc, char** argv)
   //}
   //if master
   //check if workers are running and begins reboot by contacting other workers on the same machine
+  thread cons(consensus);
   thread workerCheckerThread(workerStatus);
   RunServer(server_address);
   return 0;

@@ -15,6 +15,7 @@ service CRMasterServer {
 	rpc Ping (Request) returns (Reply) {}
 	rpc Reset (Request) returns (Reply) {}
 	rpc Update (Request) returns (Request) {}
+	rpc Time (Reply) returns (Reply) {}
 } 
 
 message ListReply { 
