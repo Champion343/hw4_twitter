@@ -155,6 +155,7 @@ class Client {
     if (status.ok()) {
       return reply;
     } else {
+	  reply.set_joined_roomes(0, "RPC failed");
       return reply;
     }
   }
@@ -188,15 +189,7 @@ class Client {
   std::unique_ptr<CRMasterServer::Stub> stub_;
 };
 
-string connectMaster(){
-  string h;
-  h = "128.194.143.156:50031";	
-  Client masterClient(grpc::CreateChannel(
-  h, grpc::InsecureChannelCredentials()));
-  h = masterClient.Connect();
-  return h;
-}
-
+//If a worker fails this reruns Join function on a different worker
 string newJoin(string h,string c,string r){
 	string reply;
 	Client newClient(grpc::CreateChannel(
@@ -204,6 +197,25 @@ string newJoin(string h,string c,string r){
 	reply = newClient.Join(c, r);
 	return reply;
 }
+
+//If a worker fails this reruns Leave function on a different worker
+string newLeave(string h,string c,string r){
+	string reply;
+	Client newClient(grpc::CreateChannel(
+	h, grpc::InsecureChannelCredentials()));
+	reply = newClient.Leave(c, r);
+	return reply;
+}
+
+//If a worker fails this reruns List function on a different worker
+ListReply newList(string h,string c){
+	ListReply reply;
+	Client newClient(grpc::CreateChannel(
+	h, grpc::InsecureChannelCredentials()));
+	reply = newClient.List(c);
+	return reply;
+}
+
 
 int main(int argc, char** argv) {
   // Instantiate the client. It requires a channel, out of which the actual RPCs
@@ -236,6 +248,10 @@ int main(int argc, char** argv) {
 	  //Calls List function then prints all rooms and all rooms joined by client
 	  if(input == "LIST"){
 		lreply = workerClient.List(client_name);
+		if(lreply.joined_roomes(0) == "RPC failed"){
+			host_name = masterClient.Connect();
+			lreply = newList(host_name,client_name);
+	    }
 		cout << "All Rooms:" << endl;
 		for(int i = 0; i< lreply.all_roomes_size(); ++i)
 			cout << lreply.all_roomes(i) << endl;
@@ -248,7 +264,7 @@ int main(int argc, char** argv) {
 			cin >> room_name;
 			reply = workerClient.Join(client_name, room_name);
 			if (reply == "RPC failed"){
-				host_name = connectMaster();
+				host_name = masterClient.Connect();
 				reply = newJoin(host_name,client_name, room_name);
 			}
 			std::cout << "Join: " << reply << std::endl;
@@ -257,6 +273,10 @@ int main(int argc, char** argv) {
 	  else if (input  =="LEAVE"){
 		cin >> room_name;
 		reply = workerClient.Leave(client_name, room_name);
+		if(reply == "RPC failed"){
+			host_name = masterClient.Connect();
+			reply = newLeave(host_name,client_name,room_name);
+		}
 		std::cout << "Leave: " << reply << std::endl;
 	  }
 	  //Calls chat function and enters chat mode
