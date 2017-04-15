@@ -71,8 +71,7 @@ class Client {
     if (status.ok()) {
       return reply.msg();
     } else {
-      std::cout << status.error_code() << ": " << status.error_message()
-                << std::endl;
+
       return "RPC failed";
     }
   }
@@ -95,8 +94,6 @@ class Client {
     if (status.ok()) {
       return reply.msg();
     } else {
-      std::cout << status.error_code() << ": " << status.error_message()
-                << std::endl;
       return "RPC failed";
     }
   }
@@ -119,9 +116,6 @@ class Client {
     if (status.ok()) {
       return reply.msg();
     } else {
-      std::cout << status.error_code() << ": " << status.error_message()
-                << std::endl;
-      return "RPC failed";
     }
   }
     
@@ -140,8 +134,6 @@ class Client {
     if (status.ok()) {
       return reply.msg();
     } else {
-      std::cout << status.error_code() << ": " << status.error_message()
-                << std::endl;
       return "RPC failed";
     }
   }
@@ -163,8 +155,6 @@ class Client {
     if (status.ok()) {
       return reply;
     } else {
-      std::cout << status.error_code() << ": " << status.error_message()
-                << "RPC failed" << std::endl;
       return reply;
     }
   }
@@ -197,6 +187,23 @@ class Client {
  private:
   std::unique_ptr<CRMasterServer::Stub> stub_;
 };
+
+string connectMaster(){
+  string h;
+  h = "128.194.143.156:50031";	
+  Client masterClient(grpc::CreateChannel(
+  h, grpc::InsecureChannelCredentials()));
+  h = masterClient.Connect();
+  return h;
+}
+
+string newJoin(string h,string c,string r){
+	string reply;
+	Client newClient(grpc::CreateChannel(
+	h, grpc::InsecureChannelCredentials()));
+	reply = newClient.Join(c, r);
+	return reply;
+}
 
 int main(int argc, char** argv) {
   // Instantiate the client. It requires a channel, out of which the actual RPCs
@@ -240,6 +247,10 @@ int main(int argc, char** argv) {
 	  else if(input == "JOIN"){
 			cin >> room_name;
 			reply = workerClient.Join(client_name, room_name);
+			if (reply == "RPC failed"){
+				host_name = connectMaster();
+				reply = newJoin(host_name,client_name, room_name);
+			}
 			std::cout << "Join: " << reply << std::endl;
 		}
 	  //Calls leave function the prints if successful or not
