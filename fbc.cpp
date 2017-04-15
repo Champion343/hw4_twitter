@@ -155,7 +155,7 @@ class Client {
     if (status.ok()) {
       return reply;
     } else {
-	  reply.set_joined_roomes(0, "RPC failed");
+	  reply.add_joined_roomes("RPC failed");
       return reply;
     }
   }
@@ -248,10 +248,12 @@ int main(int argc, char** argv) {
 	  //Calls List function then prints all rooms and all rooms joined by client
 	  if(input == "LIST"){
 		lreply = workerClient.List(client_name);
+		if(lreply.joined_roomes_size() > 0){
 		if(lreply.joined_roomes(0) == "RPC failed"){
 			host_name = masterClient.Connect();
 			lreply = newList(host_name,client_name);
 	    }
+		}
 		cout << "All Rooms:" << endl;
 		for(int i = 0; i< lreply.all_roomes_size(); ++i)
 			cout << lreply.all_roomes(i) << endl;
