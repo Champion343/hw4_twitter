@@ -142,7 +142,7 @@ bool createChatroom(string username)
 		return false;
 	Room newRoom(username);
 	chatRooms.push_back(newRoom);
-	cout << "created room: " << username << endl;
+	cout << myPort  << "created room: " << username << endl;
 	return true;
 }
 
@@ -324,7 +324,7 @@ void other_Workers(int port, vector<string>* hosts)
 	}
 }
 
-bool onSameMachine(int port)
+bool writeOnce(int port)
 {
 	switch(port)
 	{
@@ -376,7 +376,7 @@ class Client {
 	if (status.ok()) {
 	return true;
 	} else {
-	std::cout << status.error_code() << ": " << status.error_message()
+	std::cout << myPort  << status.error_code() << ": " << status.error_message()
 			<< std::endl;
 	return false;
 	}
@@ -394,7 +394,7 @@ class Client {
 	if (status.ok()) {
 	return true;
 	} else {
-	std::cout << status.error_code() << ": " << status.error_message()
+	std::cout << myPort  << status.error_code() << ": " << status.error_message()
 			<< std::endl;
 	return false;
 	}
@@ -464,7 +464,7 @@ class Client {
 	if (status.ok()) {
 	return true;
 	} else {
-	std::cout << status.error_code() << ": " << status.error_message()
+	std::cout << myPort  << status.error_code() << ": " << status.error_message()
 			<< std::endl;
 	return false;
 	}
@@ -480,7 +480,7 @@ class Client {
 	if (status.ok()) {
 	return reply.msg();
 	} else {
-	std::cout << status.error_code() << ": " << status.error_message()
+	std::cout << myPort  << status.error_code() << ": " << status.error_message()
 			<< std::endl;
 	return "fail";
 	}
@@ -493,10 +493,10 @@ class Client {
 	// Container for the data we expect from the server.
     Reply reply;
     ClientContext context;
-	cout << "worker client login\n";
+	cout << myPort  << "worker client login\n";
 	if(message.arguments_size() > 1)
 	{
-		cout << "worker client login >1\n";
+		cout << myPort  << "worker client login >1\n";
 		msg.set_username(message.arguments(1));
 		msg.add_arguments(message.arguments(2));
 		Status status = stub_->Login(&context, msg, &reply);
@@ -505,7 +505,7 @@ class Client {
 		if (status.ok()) {
 		  return true;
 		} else {
-		  std::cout << status.error_code() << ": " << status.error_message()
+		  std::cout << myPort  << status.error_code() << ": " << status.error_message()
 					<< std::endl;
 		  return false;
 		}
@@ -514,12 +514,12 @@ class Client {
 	{
 		msg = message;
 		Status status = stub_->Login(&context, msg, &reply);
-		cout << "worker client login <1\n";
+		cout << myPort  << "worker client login <1\n";
 		// Act upon its status.
 		if (status.ok()) {
 		  return true;
 		} else {
-		  std::cout << status.error_code() << ": " << status.error_message()
+		  std::cout << myPort  << status.error_code() << ": " << status.error_message()
 					<< std::endl;
 		  return false;
 		}
@@ -534,10 +534,10 @@ class Client {
     bool Join(Request message) {
     // Data we are sending to the server.
 	Request msg;
-	cout << "arg size" << message.arguments_size() << endl;
+	cout << myPort  << "arg size" << message.arguments_size() << endl;
 	if(message.arguments_size() > 2)
 	{
-		cout << "join >1\n";
+		cout << myPort  << "join >1\n";
 		msg.set_username(message.arguments(1));
 		msg.add_arguments(message.arguments(2));
 		msg.add_arguments(message.arguments(3));
@@ -553,7 +553,7 @@ class Client {
 		if (status.ok()) {
 		  return true;
 		} else {
-		  std::cout << status.error_code() << ": " << status.error_message()
+		  std::cout << myPort  << status.error_code() << ": " << status.error_message()
 					<< std::endl;
 		  return false;
 		}
@@ -561,7 +561,7 @@ class Client {
 	else
 	{
 			// Container for the data we expect from the server.
-			cout << "join<1\n";
+			cout << myPort  << "join<1\n";
 		Reply reply;
 		msg = message;
 		ClientContext context;
@@ -573,7 +573,7 @@ class Client {
 		if (status.ok()) {
 		  return true;
 		} else {
-		  std::cout << status.error_code() << ": " << status.error_message()
+		  std::cout << myPort  << status.error_code() << ": " << status.error_message()
 					<< std::endl;
 		  return false;
     }
@@ -601,7 +601,7 @@ class Client {
 		if (status.ok()) {
 		  return true;
 		} else {
-		  std::cout << status.error_code() << ": " << status.error_message()
+		  std::cout << myPort  << status.error_code() << ": " << status.error_message()
 					<< std::endl;
 		  return false;
 		}
@@ -620,7 +620,7 @@ class Client {
 		if (status.ok()) {
 		  return true;
 		} else {
-		  std::cout << status.error_code() << ": " << status.error_message()
+		  std::cout << myPort  << status.error_code() << ": " << status.error_message()
 					<< std::endl;
 		  return false;
     }
@@ -745,15 +745,15 @@ class FBServiceImpl final : public CRMasterServer::Service
 	Status Reset(ServerContext* context, const Request* request, Reply* reply) 
 	override 
 	{
-		cout << "reset" << request->username() << endl;
+		cout << myPort  << "reset" << request->username() << endl;
 		if(fork() == 0)
 		{
-			cout << "child reset\n";
+			cout << myPort  << "child reset\n";
 			myPort = atoi(request->username().substr(request->username().find(':') +1).c_str());
-			cout << myPort << endl;
+			cout << myPort  << myPort << endl;
 			other_Workers(myPort, &otherHosts);
 			assigned_Worker(myPort, &otherHosts1, &otherHosts2);
-			cout << "rooms " << chatRooms.size() << endl;
+			cout << myPort  << "rooms " << chatRooms.size() << endl;
 			thread ping(checkMaster,"128.194.143.156:50031");
 			RunServer(request->username());
 		}
@@ -764,7 +764,7 @@ class FBServiceImpl final : public CRMasterServer::Service
 	Status Ping(ServerContext* context, const Request* request, Reply* reply) 
 	override 
 	{
-		cout << "ping" << endl;
+		//cout << myPort  << "ping" << endl;
 		reply->set_msg("ayy");
 		return Status::OK;
 	}
@@ -773,7 +773,7 @@ class FBServiceImpl final : public CRMasterServer::Service
     Status Cast(ServerContext* context, const Request* fwd, Reply* reply) 
 	override 
 	{
-		if(!onSameMachine(atoi(fwd->arguments(0).c_str())))
+		if(writeOnce(atoi(fwd->arguments(0).c_str())))
 		{
 		//add message to file
 		fstream file;
@@ -781,15 +781,15 @@ class FBServiceImpl final : public CRMasterServer::Service
 		//open file with truncation for writing
 		file.open(user + ".txt", fstream::out | fstream::app);
 		if(file.is_open())
-			cout << "opened file for writing"<< endl;
+			cout << myPort  << "opened file for writing"<< endl;
 		else
-			cout << "NO OPEN FILE for writing (╯°□°)╯︵ ┻━┻" << endl;
+			cout << myPort  << "NO OPEN FILE for writing (╯°□°)╯︵ ┻━┻" << endl;
 		string lineMsg;
 		lineMsg = fwd->arguments(2);
 		file << lineMsg << endl;
-		cout << "added to file: " << lineMsg << endl;
+		cout << myPort  << "added to file: " << lineMsg << endl;
 		file.close();
-		cout << "updated file" << endl;
+		cout << myPort  << "updated file" << endl;
 		/*
 		//update logic clock
 		for(int i=0; i<3; i++)
@@ -798,9 +798,9 @@ class FBServiceImpl final : public CRMasterServer::Service
 		//open file for writing
 		file.open("logicClock.txt", fstream::out);
 		if(file.is_open())
-			cout << "opened file for writing"<< endl;
+			cout << myPort  << "opened file for writing"<< endl;
 		else
-			cout << "NO OPEN FILE for writing (╯°□°)╯︵ ┻━┻" << endl;
+			cout << myPort  << "NO OPEN FILE for writing (╯°□°)╯︵ ┻━┻" << endl;
 		for(int i=0; i<3; i++)
 			file << logic[i] << endl;*/
 		}
@@ -815,14 +815,14 @@ class FBServiceImpl final : public CRMasterServer::Service
 			k = findName(chatRooms[index].followers[i], &chatRooms);
 			if(index == k) //do not post to self
 				continue;
-			cout << "writing to stream in cast" << endl;
+			cout << myPort  << "writing to stream in cast" << endl;
 			if(chatRooms[k].stream != NULL)
 			{
 				chatRooms[k].stream->Write(note);
 				
 			}
 			else
-				cout << "null stream" << endl; //follower has not called CHAT yet
+				cout << myPort  << "null stream" << endl; //follower has not called CHAT yet
 		}
 		return Status::OK;	
 	}
@@ -831,7 +831,7 @@ class FBServiceImpl final : public CRMasterServer::Service
     Status Login(ServerContext* context, const Request* request, Reply* reply) 
 	override 
 	{
-		cout << "creating room: " << request->username() << endl;
+		cout << myPort  << "creating room: " << request->username() << endl;
 		if(createChatroom(request->username()))
 		{
 			
@@ -841,17 +841,17 @@ class FBServiceImpl final : public CRMasterServer::Service
 			Request send;
 			send = *request;
 			send.add_arguments("ayy");
-			cout << "attempt broadcast\n";
+			cout << myPort  << "attempt broadcast\n";
 			if(request->arguments_size() == 0)
 			for(int i=0; i<6; i++)
 			{
-				cout << "broadcasting\n" ;
+				cout << myPort  << "broadcasting\n" ;
 				Client worker(grpc::CreateChannel(otherHosts[i], grpc::InsecureChannelCredentials()));
 				
-				cout << "set argu\n" ;
+				cout << myPort  << "set argu\n" ;
 				if(!worker.Login(send))//grpc fail
 				{
-					cout << otherHosts[i] << "broadcast failed\n";
+					cout << myPort  << otherHosts[i] << "broadcast failed\n";
 					//add to buffer
 					if(otherHosts[i].compare("128.194.143.156:50038") != 0)//worker4, server wont die
 					{
@@ -903,7 +903,7 @@ class FBServiceImpl final : public CRMasterServer::Service
 						}
 					}
 				}
-				//cout << otherHosts[i] << "broadcast succedd\n";
+				//cout << myPort  << otherHosts[i] << "broadcast succedd\n";
 			}
 		}
 		else
@@ -935,20 +935,20 @@ class FBServiceImpl final : public CRMasterServer::Service
 	override 
 	{
 		//add new friend to user, add user to new friend's followers
-		cout << request->username() + " tryna join "+request->arguments(0) << endl;
+		cout << myPort  << request->username() + " tryna join "+request->arguments(0) << endl;
 		int user, joining;
 		user = findName(request->username(), &chatRooms);
 		joining = findName(request->arguments(0), &chatRooms);
 		if( user < 0 || joining < 0)
 		{
 			reply->set_msg("join fail");
-			cout << "join fail1" << endl;
+			cout << myPort  << "join fail1" << endl;
 		}
 		else if( chatRooms[user].addFriend(request->arguments(0)) &&
 				 chatRooms[joining].addFollower(request->username()) )
 				 {
 					reply->set_msg("join success");
-					cout << "join success" << endl;
+					cout << myPort  << "join success" << endl;
 					//broadcast to all other workers
 					int j=0;
 					Request send;
@@ -1023,7 +1023,7 @@ class FBServiceImpl final : public CRMasterServer::Service
 		else
 		{
 			reply->set_msg("join fail");
-			cout << "join fail2" << endl;
+			cout << myPort  << "join fail2" << endl;
 		}
 		return Status::OK;
 	}
@@ -1033,19 +1033,19 @@ class FBServiceImpl final : public CRMasterServer::Service
 	override 
 	{
 		//delete person from user's friends, delete user from person's followers
-		cout << request->username() << " tryna leave " << request->arguments(0) << endl;
+		cout << myPort  << request->username() << " tryna leave " << request->arguments(0) << endl;
 		int user, leaving;
 		user = findName(request->username(), &chatRooms);
 		leaving = findName(request->arguments(0), &chatRooms);
 		if( user < 0 || leaving < 0)
 		{
-			cout << "leave fail1" << endl;
+			cout << myPort  << "leave fail1" << endl;
 			reply->set_msg("leave fail");
 		}
 		else if( chatRooms[user].unfriend(request->arguments(0)) &&
 				 chatRooms[leaving].unfollowedBy(request->username()) )
 				 {
-			cout << "leave success" << endl;
+			cout << myPort  << "leave success" << endl;
 					reply->set_msg("leave success");
 					//broadcast to all other workers
 					int j=0;
@@ -1119,7 +1119,7 @@ class FBServiceImpl final : public CRMasterServer::Service
 					}
 				 }
 		else{
-			cout << "leave fail2" << endl;
+			cout << myPort  << "leave fail2" << endl;
 			reply->set_msg("leave fail");
 		}
 		return Status::OK;
@@ -1145,25 +1145,25 @@ class FBServiceImpl final : public CRMasterServer::Service
 			int foll = findName(chatRooms[index].following[j], &chatRooms);
 			file.open(chatRooms[foll].username + ".txt");
 			if(file.is_open())
-			cout << "opened file for reading"<< endl;
+			cout << myPort  << "opened file for reading"<< endl;
 			else
-				cout << "NO OPEN FILE for reading (╯°□°)╯︵ ┻━┻" << endl;//not necessarily an error
+				cout << myPort  << "NO OPEN FILE for reading (╯°□°)╯︵ ┻━┻" << endl;//not necessarily an error
 			//go thru current subscription's file
 			while(getline(file, line))
 			{
 				placeIn(line, &recentMsgs, chatRooms[index].joinTime[j]);
 			}
-			cout << "closing file" << endl;
+			cout << myPort  << "closing file" << endl;
 			file.close();
 		}
 		//no recent messages from subscriptions
 		if(recentMsgs.size() == 0)
 		{
-			cout << "wrting nothing for last 20 msgs" << endl;
+			cout << myPort  << "wrting nothing for last 20 msgs" << endl;
 			reply20.set_msg("no recent msgs");
 			stream->Write(reply20);
 		}
-		cout << "reply 20 size " << recentMsgs.size() << endl;
+		cout << myPort  << "reply 20 size " << recentMsgs.size() << endl;
 		//send most recent subscription messages
 		for (int i=0; i < 20 && recentMsgs.size() != 0; i++)
 		{
@@ -1176,9 +1176,9 @@ class FBServiceImpl final : public CRMasterServer::Service
 		//open file with truncation for writing
 		file.open(user + ".txt", fstream::out | fstream::trunc);
 		if(file.is_open())
-			cout << "opened file for writing"<< endl;
+			cout << myPort  << "opened file for writing"<< endl;
 		else
-			cout << "NO OPEN FILE for writing (╯°□°)╯︵ ┻━┻" << endl;
+			cout << myPort  << "NO OPEN FILE for writing (╯°□°)╯︵ ┻━┻" << endl;
 		string lineMsg;
 		time_t nowtime;
 		string date;
@@ -1201,7 +1201,7 @@ class FBServiceImpl final : public CRMasterServer::Service
 					gettimeofday(&tv, NULL);
 					temptime->set_seconds(tv.tv_sec);
 					temptime->set_nanos(tv.tv_usec * 1000);
-					cout << google::protobuf::util::TimeUtil::ToString(*temptime) << endl;
+					cout << myPort  << google::protobuf::util::TimeUtil::ToString(*temptime) << endl;
 				}
 		
 				lineMsg.clear();
@@ -1286,21 +1286,21 @@ class FBServiceImpl final : public CRMasterServer::Service
 					}
 				}
 			}
-				cout << "added to file: " << lineMsg << endl;
+				cout << myPort  << "added to file: " << lineMsg << endl;
 				//loop thru followers and post to their screens
 				for(int i=0; i < (int)chatRooms[index].followers.size(); i++)
 				{
 					k = findName(chatRooms[index].followers[i], &chatRooms);
 					if(index == k) //do not post to self
 						continue;
-					cout << "writing" << endl;
+					cout << myPort  << "writing" << endl;
 					if(chatRooms[k].stream != NULL)
 					{
 						chatRooms[k].stream->Write(note);
 						
 					}
 					else
-						cout << "null stream" << endl; //follower has not called CHAT yet
+						cout << myPort  << "null stream" << endl; //follower has not called CHAT yet
 				}
 				++last;
 				//wait for 50 messages
@@ -1311,12 +1311,12 @@ class FBServiceImpl final : public CRMasterServer::Service
 				gettimeofday(&tv, NULL);
 				temptime2->set_seconds(tv.tv_sec);
 				temptime2->set_nanos(tv.tv_usec * 1000);
-				cout << google::protobuf::util::TimeUtil::ToString(*temptime2) << endl;
+				cout << myPort  << google::protobuf::util::TimeUtil::ToString(*temptime2) << endl;
 				}
 			}
 		}
 		file.close();
-		cout << "out of while" << endl;
+		cout << myPort  << "out of while" << endl;
 		return Status::OK;
 	}
   
@@ -1338,7 +1338,7 @@ void checkMaster(string host_name)
 	while(1)
 	{
 		sleep(5);
-		cout << "Wping\n";
+		//cout << myPort  << "Wping\n";
 		if(!master.Ping() && conn)
 		{
 			conn = false;
@@ -1361,7 +1361,7 @@ void RunServer(string server_address)
   builder.RegisterService(&service);
   // Finally assemble the server.
   unique_ptr<Server> server(builder.BuildAndStart());
-  cout << "Server listening on " << server_address << endl;
+  cout << myPort  << "Server listening on " << server_address << endl;
 
   // Wait for the server to shutdown. Note that some other thread must be
   // responsible for shutting down the server for this call to ever return.
@@ -1373,11 +1373,11 @@ vector<Client*> workers;
 int main(int argc, char** argv) 
 {
   string server_address("0.0.0.0:50032");
-  cout << "agrc" << argc << endl;
-  //cout << "agrv0" << argv[0] << endl;
-  //cout << "agrv1" << argv[1] << endl;
-  //cout << "agrv2" << argv[2] << endl;
-  //cout << "agrv3" << argv[3] << endl;
+  cout << myPort  << "agrc" << argc << endl;
+  //cout << myPort  << "agrv0" << argv[0] << endl;
+  //cout << myPort  << "agrv1" << argv[1] << endl;
+  //cout << myPort  << "agrv2" << argv[2] << endl;
+  //cout << myPort  << "agrv3" << argv[3] << endl;
   thread ping(checkMaster,"128.194.143.156:50031");
   if(argc == 4)
   {
@@ -1424,6 +1424,6 @@ int main(int argc, char** argv)
 	  RunServer(server_address);
   }
   else 
-  cout << "ok" << endl;
+  cout << myPort  << "ok" << endl;
   return 0;
 }
