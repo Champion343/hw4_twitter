@@ -328,19 +328,31 @@ bool onSameMachine(int port)
 	switch(port)
 	{
 		case 50035:
+			if(myPort ==50038 || myPort == 50039)
+				return true;
+			break;
 		case 50036:
+			if(myPort ==50038 || myPort == 50040)
+				return true;
+			break;
 		case 50037:
-			if(myPort <=50037)
+			if(myPort ==50038 || myPort == 50041)
 				return true;
 			break;
 		case 50038:
-			if(myPort ==50038)
+			if(myPort ==50035 || myPort == 50039)
 				return true;
 			break;
 		case 50039:
+			if(myPort ==50038 || myPort == 50035)
+				return true;
+			break;
 		case 50040:
+			if(myPort ==50038 || myPort == 50036)
+				return true;
+			break;
 		case 50041:
-			if(myPort >=50039)
+			if(myPort ==50038 || myPort == 50037)
 				return true;
 			break;
 	}
@@ -1323,6 +1335,7 @@ void checkMaster(string host_name)
 	while(1)
 	{
 		sleep(5);
+		cout << "Wping\n";
 		if(!master.Ping() && conn)
 		{
 			conn = false;
