@@ -41,6 +41,7 @@ vector<string> otherHosts1;
 vector<string> otherHosts2;
 deque<Request> buffer;
 void RunServer(string server_address);
+void checkMaster(string host_name);
 
 //find exsiting name in a vector, get index
 int findName(string username, vector<string>* list)
@@ -500,28 +501,28 @@ class Client {
 		msg.add_arguments(message.arguments(2));
 		Status status = stub_->Login(&context, msg, &reply);
 		
-    // Act upon its status.
-    if (status.ok()) {
-      return true;
-    } else {
-      std::cout << status.error_code() << ": " << status.error_message()
-                << std::endl;
-      return false;
-    }
+		// Act upon its status.
+		if (status.ok()) {
+		  return true;
+		} else {
+		  std::cout << status.error_code() << ": " << status.error_message()
+					<< std::endl;
+		  return false;
+		}
 	}
 	else
 	{
 		msg = message;
 		Status status = stub_->Login(&context, msg, &reply);
 		cout << "worker client login <1\n";
-    // Act upon its status.
-    if (status.ok()) {
-      return true;
-    } else {
-      std::cout << status.error_code() << ": " << status.error_message()
-                << std::endl;
-      return false;
-    }
+		// Act upon its status.
+		if (status.ok()) {
+		  return true;
+		} else {
+		  std::cout << status.error_code() << ": " << status.error_message()
+					<< std::endl;
+		  return false;
+		}
 	}
 	
     // The actual RPC.
@@ -752,6 +753,8 @@ class FBServiceImpl final : public CRMasterServer::Service
 			cout << myPort << endl;
 			other_Workers(myPort, &otherHosts);
 			assigned_Worker(myPort, &otherHosts1, &otherHosts2);
+			cout << "rooms " << chatRooms.size() << endl;
+			thread ping(checkMaster,"128.194.143.156:50031");
 			RunServer(request->username());
 		}
 		return Status::OK;
