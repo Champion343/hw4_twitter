@@ -1320,6 +1320,14 @@ int main(int argc, char** argv)
 	  //Client worker1(grpc::CreateChannel(
 		//host_name, grpc::InsecureChannelCredentials()));
   } 
+  else if(argc == 2)
+  {
+	  server_address = "0.0.0.0:"+(string)argv[1];
+	  myPort = atoi(argv[1]);
+	  other_Workers(myPort, &otherHosts);
+	  assigned_Worker(myPort, &otherHosts1, &otherHosts2);
+	  RunServer(server_address);
+  }
   else if(argc == 3)//restart as empty
   {
 	string host_name = (string)argv[2];
