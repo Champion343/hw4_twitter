@@ -12,7 +12,7 @@ service CRMasterServer {
     rpc Leave (Request) returns (Reply) {}
     rpc Chat (stream Message) returns (stream Message) {} 
 	rpc Connect (Request) returns (Reply) {}
-	rpc Cast (Message) returns (Reply) {}
+	rpc Cast (Request) returns (Reply) {}
 	rpc Ping (Request) returns (Reply) {}
 	rpc Reset (Request) returns (Reply) {}
 	rpc Update (Request) returns (Request) {}

@@ -323,6 +323,30 @@ void other_Workers(int port, vector<string>* hosts)
 	}
 }
 
+bool onSameMachine(int port)
+{
+	switch(port)
+	{
+		case 50035:
+		case 50036:
+		case 50037:
+			if(myPort <=50037)
+				return true;
+			break;
+		case 50038:
+			if(myPort ==50038)
+				return true;
+			break;
+		case 50039:
+		case 50040:
+		case 50041:
+			if(myPort >=50039)
+				return true;
+			break;
+	}
+	return false;
+}
+
 //Client object used for grpc calls
 class Client {
  public:
@@ -413,10 +437,15 @@ class Client {
 		fwd.add_clock(to_string(logic[i]));
 	// Container for the data we expect from the server.
 	Reply reply;
+	Request request;
 	ClientContext context;
+	request.set_username(fwd.username());
+	request.add_arguments(to_string(myPort));
+	request.add_arguments(fwd.msg());
+	request.add_arguments(fwd.username()+' '+fwd.msg());
 
 	// The actual RPC.
-	Status status = stub_->Cast(&context, fwd, &reply);
+	Status status = stub_->Cast(&context, request, &reply);
 
 	// Act upon its status.
 	if (status.ok()) {
@@ -703,10 +732,12 @@ class FBServiceImpl final : public CRMasterServer::Service
 	Status Reset(ServerContext* context, const Request* request, Reply* reply) 
 	override 
 	{
-		cout << "reset" << request->username() << request->arguments(0) << endl;
-		if(fork == 0)
+		cout << "reset" << request->username() << endl;
+		if(fork() == 0)
 		{
-			myPort = atoi(request->arguments(0).c_str());
+			cout << "child reset\n";
+			myPort = atoi(request->username().substr(request->username().find(':') +1).c_str());
+			cout << myPort << endl;
 			other_Workers(myPort, &otherHosts);
 			assigned_Worker(myPort, &otherHosts1, &otherHosts2);
 			RunServer(request->username());
@@ -724,9 +755,11 @@ class FBServiceImpl final : public CRMasterServer::Service
 	}
 	
 	// Cast - recieve updates from other workers
-    Status Cast(ServerContext* context, const Message* fwd, Reply* reply) 
+    Status Cast(ServerContext* context, const Request* fwd, Reply* reply) 
 	override 
 	{
+		if(!onSameMachine(atoi(fwd->arguments(0).c_str())))
+		{
 		//add message to file
 		fstream file;
 		string user = fwd->username();
@@ -737,14 +770,28 @@ class FBServiceImpl final : public CRMasterServer::Service
 		else
 			cout << "NO OPEN FILE for writing (╯°□°)╯︵ ┻━┻" << endl;
 		string lineMsg;
-		lineMsg = fwd->msg();
+		lineMsg = fwd->arguments(2);
 		file << lineMsg << endl;
 		cout << "added to file: " << lineMsg << endl;
 		file.close();
 		cout << "updated file" << endl;
+		/*
+		//update logic clock
+		for(int i=0; i<3; i++)
+			if(logic[i] < atoi(fwd->clock(i).c_str()))
+				logic[i] = atoi(fwd->clock(i).c_str());
+		//open file for writing
+		file.open("logicClock.txt", fstream::out);
+		if(file.is_open())
+			cout << "opened file for writing"<< endl;
+		else
+			cout << "NO OPEN FILE for writing (╯°□°)╯︵ ┻━┻" << endl;
+		for(int i=0; i<3; i++)
+			file << logic[i] << endl;*/
+		}
 		Message note;
 		note.set_username(fwd->username());
-		note.set_msg(lineMsg);
+		note.set_msg(fwd->arguments(1));
 		//loop thru followers and post to their screens
 		int k;
 		int index = findName(fwd->username(), &chatRooms);
@@ -762,19 +809,6 @@ class FBServiceImpl final : public CRMasterServer::Service
 			else
 				cout << "null stream" << endl; //follower has not called CHAT yet
 		}
-	
-		//update logic clock
-		for(int i=0; i<3; i++)
-			if(logic[i] < atoi(fwd->clock(i).c_str()))
-				logic[i] = atoi(fwd->clock(i).c_str());
-		//open file for writing
-		file.open("logicClock.txt", fstream::out);
-		if(file.is_open())
-			cout << "opened file for writing"<< endl;
-		else
-			cout << "NO OPEN FILE for writing (╯°□°)╯︵ ┻━┻" << endl;
-		for(int i=0; i<3; i++)
-			file << logic[i] << endl;
 		return Status::OK;	
 	}
 	
@@ -1168,7 +1202,7 @@ class FBServiceImpl final : public CRMasterServer::Service
 				//send to another worker
 				Message fwd;
 				fwd.set_username(user);
-				fwd.set_msg(lineMsg);
+				fwd.set_msg(hms + ' ' + note.msg());
 				//broadcast to all other workers
 			int j=0;
 			for(int i=0; i<6; i++)
