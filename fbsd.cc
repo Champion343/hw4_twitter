@@ -792,10 +792,11 @@ class FBServiceImpl final : public CRMasterServer::Service
 			Request send;
 			send = *request;
 			send.add_arguments("ayy");
+			cout << "attempt broadcast\n";
 			if(request->arguments_size() == 0)
 			for(int i=0; i<6; i++)
 			{
-				//cout << "broadcasting\n" ;
+				cout << "broadcasting\n" ;
 				Client worker(grpc::CreateChannel(otherHosts[i], grpc::InsecureChannelCredentials()));
 				
 				cout << "set argu\n" ;
