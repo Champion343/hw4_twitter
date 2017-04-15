@@ -51,7 +51,7 @@ PROTOS_PATH = ./
 
 vpath %.proto $(PROTOS_PATH)
 
-all: system-check fbsd master fbc
+all: system-check fbsd master fbc start2 start1
 
 fbc: fbp.pb.o fbp.grpc.pb.o fbc.o
 	$(CXX) $^ $(LDFLAGS) -o $@
@@ -61,6 +61,12 @@ fbsd: fbp.pb.o fbp.grpc.pb.o fbsd.o
 
 master: fbp.pb.o fbp.grpc.pb.o master.o
 	$(CXX) $^ $(LDFLAGS) -o $@
+
+start2: start2.o
+	$(CXX) $^ $(LDFLAGS) -o $@	
+	
+start1: start1.o
+	$(CXX) $^ $(LDFLAGS) -o $@	
 	
 .PRECIOUS: %.grpc.pb.cc
 %.grpc.pb.cc: %.proto
