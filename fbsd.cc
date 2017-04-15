@@ -731,20 +731,38 @@ class FBServiceImpl final : public CRMasterServer::Service
 		fstream file;
 		string user = fwd->username();
 		//open file with truncation for writing
-		file.open(user + ".txt", fstream::out | fstream::trunc);
+		file.open(user + ".txt", fstream::out | fstream::app);
 		if(file.is_open())
 			cout << "opened file for writing"<< endl;
 		else
 			cout << "NO OPEN FILE for writing (╯°□°)╯︵ ┻━┻" << endl;
 		string lineMsg;
-		
 		lineMsg = fwd->msg();
 		file << lineMsg << endl;
 		cout << "added to file: " << lineMsg << endl;
-		//loop thru followers and post to their screens
-		
 		file.close();
 		cout << "updated file" << endl;
+		Message note;
+		note.set_username(fwd->username());
+		note.set_msg(lineMsg);
+		//loop thru followers and post to their screens
+		int k;
+		int index = findName(fwd->username(), &chatRooms);
+		for(int i=0; i < (int)chatRooms[index].followers.size(); i++)
+		{
+			k = findName(chatRooms[index].followers[i], &chatRooms);
+			if(index == k) //do not post to self
+				continue;
+			cout << "writing to stream in cast" << endl;
+			if(chatRooms[k].stream != NULL)
+			{
+				chatRooms[k].stream->Write(note);
+				
+			}
+			else
+				cout << "null stream" << endl; //follower has not called CHAT yet
+		}
+	
 		//update logic clock
 		for(int i=0; i<3; i++)
 			if(logic[i] < atoi(fwd->clock(i).c_str()))
@@ -1322,8 +1340,8 @@ int main(int argc, char** argv)
   } 
   else if(argc == 2)
   {
-	  server_address = "0.0.0.0:"+(string)argv[1];
-	  myPort = atoi(argv[1]);
+	  server_address = "0.0.0.0:"+(string)argv[0];
+	  myPort = atoi(argv[0]);
 	  other_Workers(myPort, &otherHosts);
 	  assigned_Worker(myPort, &otherHosts1, &otherHosts2);
 	  RunServer(server_address);
