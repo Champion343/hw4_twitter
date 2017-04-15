@@ -447,13 +447,18 @@ class Client {
   //Login function send message containing username and receives response
   bool Login(Request message) {
     Request msg;
-	msg.set_username(message.arguments(1));
-	msg.add_arguments(message.arguments(2));
+	
 	// Container for the data we expect from the server.
     Reply reply;
     ClientContext context;
-    // The actual RPC.
-    Status status = stub_->Login(&context, msg, &reply);
+	cout << "worker client login\n";
+	if(message.arguments_size() > 1)
+	{
+		cout << "worker client login >1\n";
+		msg.set_username(message.arguments(1));
+		msg.add_arguments(message.arguments(2));
+		Status status = stub_->Login(&context, msg, &reply);
+		
     // Act upon its status.
     if (status.ok()) {
       return true;
@@ -462,56 +467,119 @@ class Client {
                 << std::endl;
       return false;
     }
+	}
+	else
+	{
+		msg = message;
+		Status status = stub_->Login(&context, msg, &reply);
+		cout << "worker client login <1\n";
+    // Act upon its status.
+    if (status.ok()) {
+      return true;
+    } else {
+      std::cout << status.error_code() << ": " << status.error_message()
+                << std::endl;
+      return false;
+    }
+	}
+	
+    // The actual RPC.
+    
+	
   }
 	//Join function sends a message containing username and the room that is being
 	//joined then returns server response
     bool Join(Request message) {
     // Data we are sending to the server.
 	Request msg;
-	msg.set_username(message.arguments(1));
-	msg.add_arguments(message.arguments(2));
-	msg.add_arguments(message.arguments(3));
-    // Container for the data we expect from the server.
-    Reply reply;
+	if(message.arguments_size() > 1)
+	{
+		msg.set_username(message.arguments(1));
+		msg.add_arguments(message.arguments(2));
+		msg.add_arguments(message.arguments(3));
+		// Container for the data we expect from the server.
+		Reply reply;
 
-    ClientContext context;
+		ClientContext context;
 
-    // The actual RPC.
-    Status status = stub_->Join(&context, msg, &reply);
+		// The actual RPC.
+		Status status = stub_->Join(&context, msg, &reply);
 
-    // Act upon its status.
-    if (status.ok()) {
-      return true;
-    } else {
-      std::cout << status.error_code() << ": " << status.error_message()
-                << std::endl;
-      return false;
+		// Act upon its status.
+		if (status.ok()) {
+		  return true;
+		} else {
+		  std::cout << status.error_code() << ": " << status.error_message()
+					<< std::endl;
+		  return false;
+		}
+	}
+	else
+	{
+			// Container for the data we expect from the server.
+		Reply reply;
+
+		ClientContext context;
+
+		// The actual RPC.
+		Status status = stub_->Join(&context, msg, &reply);
+
+		// Act upon its status.
+		if (status.ok()) {
+		  return true;
+		} else {
+		  std::cout << status.error_code() << ": " << status.error_message()
+					<< std::endl;
+		  return false;
     }
+	}
   }
     //Leave function sends a message containing username and the room that is being
 	//left then returns server response
     bool Leave(Request message) {
     // Data we are sending to the server.
 	Request msg;
-	msg.set_username(message.arguments(1));
-	msg.add_arguments(message.arguments(2));
-	msg.add_arguments(message.arguments(3));
-    // Container for the data we expect from the server.
-    Reply reply;
+	if(message.arguments_size() > 1)
+	{
+		msg.set_username(message.arguments(1));
+		msg.add_arguments(message.arguments(2));
+		msg.add_arguments(message.arguments(3));
+		// Container for the data we expect from the server.
+		Reply reply;
 
-    ClientContext context;
+		ClientContext context;
 
-    // The actual RPC.
-    Status status = stub_->Leave(&context, msg, &reply);
+		// The actual RPC.
+		Status status = stub_->Leave(&context, msg, &reply);
 
-    // Act upon its status.
-    if (status.ok()) {
-      return true;
-    } else {
-      std::cout << status.error_code() << ": " << status.error_message()
-                << std::endl;
-      return false;
+		// Act upon its status.
+		if (status.ok()) {
+		  return true;
+		} else {
+		  std::cout << status.error_code() << ": " << status.error_message()
+					<< std::endl;
+		  return false;
+		}
+	}
+	else
+	{
+			// Container for the data we expect from the server.
+		Reply reply;
+
+		ClientContext context;
+
+		// The actual RPC.
+		Status status = stub_->Join(&context, msg, &reply);
+
+		// Act upon its status.
+		if (status.ok()) {
+		  return true;
+		} else {
+		  std::cout << status.error_code() << ": " << status.error_message()
+					<< std::endl;
+		  return false;
     }
+	}
   }
   
  private:
@@ -696,18 +764,23 @@ class FBServiceImpl final : public CRMasterServer::Service
 		cout << "creating room: " << request->username() << endl;
 		if(createChatroom(request->username()))
 		{
+			
 			reply->set_msg("server created room");
 			//broadcast to all other workers
 			int j=0;
 			Request send;
 			send = *request;
+			send.add_arguments("ayy");
 			if(request->arguments_size() == 0)
 			for(int i=0; i<6; i++)
 			{
+				//cout << "broadcasting\n" ;
 				Client worker(grpc::CreateChannel(otherHosts[i], grpc::InsecureChannelCredentials()));
-				send.set_arguments(0,"ayy");
+				
+				cout << "set argu\n" ;
 				if(!worker.Login(send))//grpc fail
 				{
+					cout << otherHosts[i] << "broadcast failed\n";
 					//add to buffer
 					if(otherHosts[i].compare("128.194.143.156:50038") != 0)//worker4, server wont die
 					{
@@ -718,47 +791,48 @@ class FBServiceImpl final : public CRMasterServer::Service
 							{
 								Request buf;
 								buf.set_username("128.194.143.215:50035");
-								buf.set_arguments(0,"Login");
-								buf.set_arguments(1,send.username());
-								buf.set_arguments(2,to_string(send.arguments_size()));
+								buf.add_arguments("Login");
+								buf.add_arguments(send.username());
+								buf.add_arguments(to_string(send.arguments_size()));
 								buffer.push_back(buf);
 								Request buf1;
 								buf1.set_username("128.194.143.215:50036");
-								buf1.set_arguments(0,"Login");
-								buf1.set_arguments(1,send.username());
-								buf1.set_arguments(2,to_string(send.arguments_size()));
+								buf1.add_arguments("Login");
+								buf1.add_arguments(send.username());
+								buf1.add_arguments(to_string(send.arguments_size()));
 								buffer.push_back(buf1);
 								Request buf2;
 								buf2.set_username("128.194.143.215:50037");
-								buf2.set_arguments(0,"Login");
-								buf2.set_arguments(1,send.username());
-								buf2.set_arguments(2,to_string(send.arguments_size()));
+								buf2.add_arguments("Login");
+								buf2.add_arguments(send.username());
+								buf2.add_arguments(to_string(send.arguments_size()));
 								buffer.push_back(buf2);
 							}
 							else if(i>3)
 							{
 								Request buf;
 								buf.set_username("128.194.143.215:50039");
-								buf.set_arguments(0,"Login");
-								buf.set_arguments(1,send.username());
-								buf.set_arguments(2,to_string(send.arguments_size()));
+								buf.add_arguments("Login");
+								buf.add_arguments(send.username());
+								buf.add_arguments(to_string(send.arguments_size()));
 								buffer.push_back(buf);
 								Request buf1;
 								buf1.set_username("128.194.143.215:50040");
-								buf1.set_arguments(0,"Login");
-								buf1.set_arguments(1,send.username());
-								buf1.set_arguments(2,to_string(send.arguments_size()));
+								buf1.add_arguments("Login");
+								buf1.add_arguments(send.username());
+								buf1.add_arguments(to_string(send.arguments_size()));
 								buffer.push_back(buf1);
 								Request buf2;
 								buf2.set_username("128.194.143.215:50041");
-								buf2.set_arguments(0,"Login");
-								buf2.set_arguments(1,send.username());
-								buf2.set_arguments(2,to_string(send.arguments_size()));
+								buf2.add_arguments("Login");
+								buf2.add_arguments(send.username());
+								buf2.add_arguments(to_string(send.arguments_size()));
 								buffer.push_back(buf2);
 							}
 						}
 					}
 				}
+				//cout << otherHosts[i] << "broadcast succedd\n";
 			}
 		}
 		else
@@ -808,11 +882,12 @@ class FBServiceImpl final : public CRMasterServer::Service
 					int j=0;
 					Request send;
 					send = *request;
+					send.add_arguments("ayy");
 					if(request->arguments_size() == 1)
 					for(int i=0; i<6; i++)
 					{
 						Client worker(grpc::CreateChannel(otherHosts[i], grpc::InsecureChannelCredentials()));
-						send.set_arguments(1,"ayy");
+						
 						if(!worker.Join(send))//grpc fail
 						{
 							//add to buffer
@@ -825,48 +900,48 @@ class FBServiceImpl final : public CRMasterServer::Service
 									{
 										Request buf;
 										buf.set_username("128.194.143.215:50035");
-										buf.set_arguments(0,"Join");
-										buf.set_arguments(1,send.username());
-										buf.set_arguments(2,send.arguments(0));
-										buf.set_arguments(3,send.arguments(1));
+										buf.add_arguments("Join");
+										buf.add_arguments(send.username());
+										buf.add_arguments(send.arguments(0));
+										buf.add_arguments(send.arguments(1));
 										buffer.push_back(buf);
 										Request buf1;
 										buf1.set_username("128.194.143.215:50036");
-										buf1.set_arguments(0,"Join");
-										buf1.set_arguments(1,send.username());
-										buf1.set_arguments(2,send.arguments(0));
-										buf1.set_arguments(3,send.arguments(1));
+										buf1.add_arguments("Join");
+										buf1.add_arguments(send.username());
+										buf1.add_arguments(send.arguments(0));
+										buf1.add_arguments(send.arguments(1));
 										buffer.push_back(buf1);
 										Request buf2;
 										buf2.set_username("128.194.143.215:50037");
-										buf2.set_arguments(0,"Join");
-										buf2.set_arguments(1,send.username());
-										buf2.set_arguments(2,send.arguments(0));
-										buf2.set_arguments(3,send.arguments(1));
+										buf2.add_arguments("Join");
+										buf2.add_arguments(send.username());
+										buf2.add_arguments(send.arguments(0));
+										buf2.add_arguments(send.arguments(1));
 										buffer.push_back(buf2);
 									}
 									else if(i>3)
 									{
 										Request buf;
 										buf.set_username("128.194.143.215:50039");
-										buf.set_arguments(0,"Join");
-										buf.set_arguments(1,send.username());
-										buf.set_arguments(2,send.arguments(0));
-										buf.set_arguments(3,send.arguments(1));
+										buf.add_arguments("Join");
+										buf.add_arguments(send.username());
+										buf.add_arguments(send.arguments(0));
+										buf.add_arguments(send.arguments(1));
 										buffer.push_back(buf);
 										Request buf1;
 										buf1.set_username("128.194.143.215:50040");
-										buf1.set_arguments(0,"Join");
-										buf1.set_arguments(1,send.username());
-										buf1.set_arguments(2,send.arguments(0));
-										buf1.set_arguments(3,send.arguments(1));
+										buf1.add_arguments("Join");
+										buf1.add_arguments(send.username());
+										buf1.add_arguments(send.arguments(0));
+										buf1.add_arguments(send.arguments(1));
 										buffer.push_back(buf1);
 										Request buf2;
 										buf2.set_username("128.194.143.215:50041");
-										buf2.set_arguments(0,"Join");
-										buf2.set_arguments(1,send.username());
-										buf2.set_arguments(2,send.arguments(0));
-										buf2.set_arguments(3,send.arguments(1));
+										buf2.add_arguments("Join");
+										buf2.add_arguments(send.username());
+										buf2.add_arguments(send.arguments(0));
+										buf2.add_arguments(send.arguments(1));
 										buffer.push_back(buf2);
 									}
 								}
@@ -909,7 +984,7 @@ class FBServiceImpl final : public CRMasterServer::Service
 					for(int i=0; i<6; i++)
 					{
 						Client worker(grpc::CreateChannel(otherHosts[i], grpc::InsecureChannelCredentials()));
-						send.set_arguments(1,"ayy");
+						send.add_arguments("ayy");
 						if(!worker.Leave(send))//grpc fail
 						{
 							//add to buffer
@@ -922,48 +997,48 @@ class FBServiceImpl final : public CRMasterServer::Service
 									{
 										Request buf;
 										buf.set_username("128.194.143.215:50035");
-										buf.set_arguments(0,"Leave");
-										buf.set_arguments(1,send.username());
-										buf.set_arguments(2,send.arguments(0));
-										buf.set_arguments(3,send.arguments(1));
+										buf.add_arguments("Leave");
+										buf.add_arguments(send.username());
+										buf.add_arguments(send.arguments(0));
+										buf.add_arguments(send.arguments(1));
 										buffer.push_back(buf);
 										Request buf1;
 										buf1.set_username("128.194.143.215:50036");
-										buf1.set_arguments(0,"Leave");
-										buf1.set_arguments(1,send.username());
-										buf1.set_arguments(2,send.arguments(0));
-										buf1.set_arguments(3,send.arguments(1));
+										buf1.add_arguments("Leave");
+										buf1.add_arguments(send.username());
+										buf1.add_arguments(send.arguments(0));
+										buf1.add_arguments(send.arguments(1));
 										buffer.push_back(buf1);
 										Request buf2;
 										buf2.set_username("128.194.143.215:50037");
-										buf2.set_arguments(0,"Leave");
-										buf2.set_arguments(1,send.username());
-										buf2.set_arguments(2,send.arguments(0));
-										buf2.set_arguments(3,send.arguments(1));
+										buf2.add_arguments("Leave");
+										buf2.add_arguments(send.username());
+										buf2.add_arguments(send.arguments(0));
+										buf2.add_arguments(send.arguments(1));
 										buffer.push_back(buf2);
 									}
 									else if(i>3)
 									{
 										Request buf;
 										buf.set_username("128.194.143.215:50039");
-										buf.set_arguments(0,"Leave");
-										buf.set_arguments(1,send.username());
-										buf.set_arguments(2,send.arguments(0));
-										buf.set_arguments(3,send.arguments(1));
+										buf.add_arguments("Leave");
+										buf.add_arguments(send.username());
+										buf.add_arguments(send.arguments(0));
+										buf.add_arguments(send.arguments(1));
 										buffer.push_back(buf);
 										Request buf1;
 										buf1.set_username("128.194.143.215:50040");
-										buf1.set_arguments(0,"Leave");
-										buf1.set_arguments(1,send.username());
-										buf1.set_arguments(2,send.arguments(0));
-										buf1.set_arguments(3,send.arguments(1));
+										buf1.add_arguments("Leave");
+										buf1.add_arguments(send.username());
+										buf1.add_arguments(send.arguments(0));
+										buf1.add_arguments(send.arguments(1));
 										buffer.push_back(buf1);
 										Request buf2;
 										buf2.set_username("128.194.143.215:50041");
-										buf2.set_arguments(0,"Leave");
-										buf2.set_arguments(1,send.username());
-										buf2.set_arguments(2,send.arguments(0));
-										buf2.set_arguments(3,send.arguments(1));
+										buf2.add_arguments("Leave");
+										buf2.add_arguments(send.username());
+										buf2.add_arguments(send.arguments(0));
+										buf2.add_arguments(send.arguments(1));
 										buffer.push_back(buf2);
 									}
 								}
@@ -1088,42 +1163,42 @@ class FBServiceImpl final : public CRMasterServer::Service
 							{
 								Request buf;
 								buf.set_username("128.194.143.215:50035");
-								buf.set_arguments(0,"Cast");
-								buf.set_arguments(1,fwd.username());
-								buf.set_arguments(2,fwd.msg());
+								buf.add_arguments("Cast");
+								buf.add_arguments(fwd.username());
+								buf.add_arguments(fwd.msg());
 								buffer.push_back(buf);
 								Request buf1;
 								buf1.set_username("128.194.143.215:50036");
-								buf1.set_arguments(0,"Cast");
-								buf1.set_arguments(1,fwd.username());
-								buf1.set_arguments(2,fwd.msg());
+								buf1.add_arguments("Cast");
+								buf1.add_arguments(fwd.username());
+								buf1.add_arguments(fwd.msg());
 								buffer.push_back(buf1);
 								Request buf2;
 								buf2.set_username("128.194.143.215:50037");
-								buf2.set_arguments(0,"Cast");
-								buf2.set_arguments(1,fwd.username());
-								buf2.set_arguments(2,fwd.msg());
+								buf2.add_arguments("Cast");
+								buf2.add_arguments(fwd.username());
+								buf2.add_arguments(fwd.msg());
 								buffer.push_back(buf2);
 							}
 							else if(i>3)
 							{
 								Request buf;
 								buf.set_username("128.194.143.215:50039");
-								buf.set_arguments(0,"Cast");
-								buf.set_arguments(1,fwd.username());
-								buf.set_arguments(2,fwd.msg());
+								buf.add_arguments("Cast");
+								buf.add_arguments(fwd.username());
+								buf.add_arguments(fwd.msg());
 								buffer.push_back(buf);
 								Request buf1;
 								buf1.set_username("128.194.143.215:50040");
-								buf1.set_arguments(0,"Cast");
-								buf1.set_arguments(1,fwd.username());
-								buf1.set_arguments(2,fwd.msg());
+								buf1.add_arguments("Cast");
+								buf1.add_arguments(fwd.username());
+								buf1.add_arguments(fwd.msg());
 								buffer.push_back(buf1);
 								Request buf2;
 								buf2.set_username("128.194.143.215:50041");
-								buf2.set_arguments(0,"Cast");
-								buf2.set_arguments(1,fwd.username());
-								buf2.set_arguments(2,fwd.msg());
+								buf2.add_arguments("Cast");
+								buf2.add_arguments(fwd.username());
+								buf2.add_arguments(fwd.msg());
 								buffer.push_back(buf2);
 							}
 						}
@@ -1132,9 +1207,9 @@ class FBServiceImpl final : public CRMasterServer::Service
 					{
 						Request buf;
 						buf.set_username("128.194.143.156:50038");
-						buf.set_arguments(0,"Cast");
-						buf.set_arguments(1,fwd.username());
-						buf.set_arguments(2,fwd.msg());
+						buf.add_arguments("Cast");
+						buf.add_arguments(fwd.username());
+						buf.add_arguments(fwd.msg());
 						buffer.push_back(buf);
 					}
 				}
@@ -1262,11 +1337,11 @@ int main(int argc, char** argv)
 		msg.set_username(to_string(i));
 		if(worker.Update(msg) == -1)
 			break;
-		msg.set_arguments(0,"followers");
+		msg.add_arguments("followers");
 		worker.Update(msg);
-		msg.set_arguments(0,"following");
+		msg.add_arguments("following");
 		worker.Update(msg);
-		msg.set_arguments(0,"joinTime");
+		msg.add_arguments("joinTime");
 		worker.Update(msg);
 		i++;
 	}
