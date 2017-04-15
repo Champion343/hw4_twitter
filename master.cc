@@ -286,7 +286,7 @@ void resetWorker(string host_name, string reset_addr){
 //not received will contact another worker to reboot the unresponsive worker
 void workerStatus(){
 	string workerHosts[7] = {"128.194.143.215:50035","128.194.143.215:50036","128.194.143.215:50037","0.0.0.0:50038",
-					  "128.194.143.213:50039","128.194.143.213:50038","128.194.143.213:50041"};
+					  "128.194.143.213:50039","128.194.143.213:50040","128.194.143.213:50041"};
 	bool workerStates[7] = {true,true,true,true,true,true,true};
 	while(true){
 	cout << "checking Workers..." << endl;
@@ -366,7 +366,7 @@ class FBServiceImpl final : public CRMasterServer::Service
 			worker_states[4] = false;
 		else
 			worker_states[4] = true;
-		if(checkWorker("128.194.143.213:50038") == "FAIL")
+		if(checkWorker("128.194.143.213:50040") == "FAIL")
 			worker_states[5] = false;
 		else
 			worker_states[5] = true;
@@ -398,7 +398,7 @@ class FBServiceImpl final : public CRMasterServer::Service
 			cont = false;
 		}if((worker_iterator%7) == 6 && worker_states[5] == true){
 			//send ip and port
-			reply->set_msg("128.194.143.213:50038");
+			reply->set_msg("128.194.143.213:50040");
 			cont = false;
 		}if((worker_iterator%7) == 0 && worker_states[6] == true){
 			//send ip and port
