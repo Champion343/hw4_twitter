@@ -1,5 +1,7 @@
 #include <iostream>
 #include <memory>
+#include <sys/types.h>
+#include <signal.h>
 #include <string>
 #include <fstream>
 #include <sstream>
@@ -280,12 +282,11 @@ void resetWorker(string host_name, string reset_addr){
 	string reply = client.Reset(reset_addr);
 }
 
-
 //run by thread to keep workers going pings each worker and if a response is
 //not received will contact another worker to reboot the unresponsive worker
 void workerStatus(){
-	string workerHosts[7] = {"128.194.143.215:50035","128.194.143.215:50036","128.194.143.215:50037","0.0.0.0:50040",
-					  "128.194.143.213:50039","128.194.143.213:50040","128.194.143.213:50041"};
+	string workerHosts[7] = {"128.194.143.215:50035","128.194.143.215:50036","128.194.143.215:50037","0.0.0.0:50038",
+					  "128.194.143.213:50039","128.194.143.213:50038","128.194.143.213:50041"};
 	bool workerStates[7] = {true,true,true,true,true,true,true};
 	while(true){
 	cout << "checking Workers..." << endl;
@@ -306,8 +307,10 @@ void workerStatus(){
 			}
 			if(i == 4){
 				cout << "restarting worker 4..." << endl;
-				if(fork() == 0)
-					execl("./fbsd","50040");
+				if(fork() == 0){
+					execl("./fbsd","50038");
+					kill (getpid(),SIGKILL);
+				}
 			}
 			if(i == 5){
 			resetWorker(workerHosts[i],workerHosts[i-1]);
@@ -353,7 +356,7 @@ class FBServiceImpl final : public CRMasterServer::Service
 			worker_states[2] = false;
 		else
 			worker_states[2] = true;
-		if(checkWorker("128.194.143.156:50040") == "FAIL"){
+		if(checkWorker("128.194.143.156:50038") == "FAIL"){
 			worker_states[3] = false;
 		}
 		else{
@@ -363,7 +366,7 @@ class FBServiceImpl final : public CRMasterServer::Service
 			worker_states[4] = false;
 		else
 			worker_states[4] = true;
-		if(checkWorker("128.194.143.213:50040") == "FAIL")
+		if(checkWorker("128.194.143.213:50038") == "FAIL")
 			worker_states[5] = false;
 		else
 			worker_states[5] = true;
@@ -387,7 +390,7 @@ class FBServiceImpl final : public CRMasterServer::Service
 			cont = false;
 		}if((worker_iterator%7) == 4 && worker_states[3] == true){
 			//send ip and port
-			reply->set_msg("128.194.143.156:50040");
+			reply->set_msg("128.194.143.156:50038");
 			cont = false;
 		}if((worker_iterator%7) == 5 && worker_states[4] == true){
 			//send ip and port
@@ -395,7 +398,7 @@ class FBServiceImpl final : public CRMasterServer::Service
 			cont = false;
 		}if((worker_iterator%7) == 6 && worker_states[5] == true){
 			//send ip and port
-			reply->set_msg("128.194.143.213:50040");
+			reply->set_msg("128.194.143.213:50038");
 			cont = false;
 		}if((worker_iterator%7) == 0 && worker_states[6] == true){
 			//send ip and port
