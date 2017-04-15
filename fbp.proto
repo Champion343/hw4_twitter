@@ -1,3 +1,4 @@
+
 syntax = "proto3";
 
 package fbp;
@@ -17,6 +18,7 @@ service CRMasterServer {
 	rpc Update (Request) returns (Request) {}
 	rpc Time (Reply) returns (Reply) {}
 	rpc Master (Reply) returns (Reply) {}
+	rpc Buffer (Request) returns (Reply) {}
 } 
 
 message ListReply { 
