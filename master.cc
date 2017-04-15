@@ -306,9 +306,8 @@ void workerStatus(){
 			}
 			if(i == 4){
 				cout << "restarting worker 4..." << endl;
-				/*if(fork() == 0)
-					execl("./worker");
-				*/
+				if(fork() == 0)
+					execl("./fbsd","50040");
 			}
 			if(i == 5){
 			resetWorker(workerHosts[i],workerHosts[i-1]);
