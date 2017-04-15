@@ -251,6 +251,7 @@ int main(int argc, char** argv) {
 		if(lreply.joined_roomes_size() > 0){
 		if(lreply.joined_roomes(0) == "RPC failed"){
 			host_name = masterClient.Connect();
+			cout << "connect to: " << host_name<<endl;
 			lreply = newList(host_name,client_name);
 	    }
 		}
@@ -267,6 +268,7 @@ int main(int argc, char** argv) {
 			reply = workerClient.Join(client_name, room_name);
 			if (reply == "RPC failed"){
 				host_name = masterClient.Connect();
+				cout << "connect to: " << host_name<<endl;
 				reply = newJoin(host_name,client_name, room_name);
 			}
 			std::cout << "Join: " << reply << std::endl;
@@ -277,6 +279,7 @@ int main(int argc, char** argv) {
 		reply = workerClient.Leave(client_name, room_name);
 		if(reply == "RPC failed"){
 			host_name = masterClient.Connect();
+			cout << "connect to: " << host_name<<endl;
 			reply = newLeave(host_name,client_name,room_name);
 		}
 		std::cout << "Leave: " << reply << std::endl;
