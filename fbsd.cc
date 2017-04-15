@@ -492,8 +492,10 @@ class Client {
     bool Join(Request message) {
     // Data we are sending to the server.
 	Request msg;
-	if(message.arguments_size() > 1)
+	cout << "arg size" << message.arguments_size() << endl;
+	if(message.arguments_size() > 2)
 	{
+		cout << "join >1\n";
 		msg.set_username(message.arguments(1));
 		msg.add_arguments(message.arguments(2));
 		msg.add_arguments(message.arguments(3));
@@ -517,8 +519,9 @@ class Client {
 	else
 	{
 			// Container for the data we expect from the server.
+			cout << "join<1\n";
 		Reply reply;
-
+		msg = message;
 		ClientContext context;
 
 		// The actual RPC.
@@ -539,7 +542,7 @@ class Client {
     bool Leave(Request message) {
     // Data we are sending to the server.
 	Request msg;
-	if(message.arguments_size() > 1)
+	if(message.arguments_size() > 2)
 	{
 		msg.set_username(message.arguments(1));
 		msg.add_arguments(message.arguments(2));
@@ -565,7 +568,7 @@ class Client {
 	{
 			// Container for the data we expect from the server.
 		Reply reply;
-
+		msg = message;
 		ClientContext context;
 
 		// The actual RPC.
@@ -980,11 +983,12 @@ class FBServiceImpl final : public CRMasterServer::Service
 					int j=0;
 					Request send;
 					send = *request;
+					send.add_arguments("ayy");
 					if(request->arguments_size() == 1)
 					for(int i=0; i<6; i++)
 					{
 						Client worker(grpc::CreateChannel(otherHosts[i], grpc::InsecureChannelCredentials()));
-						send.add_arguments("ayy");
+						
 						if(!worker.Leave(send))//grpc fail
 						{
 							//add to buffer
@@ -1316,14 +1320,6 @@ int main(int argc, char** argv)
 	  //Client worker1(grpc::CreateChannel(
 		//host_name, grpc::InsecureChannelCredentials()));
   } 
-  if(argc == 2)//start up
-  {
-	  server_address = "0.0.0.0:"+(string)argv[1];
-	  myPort = atoi(argv[1]);
-	  RunServer(server_address);
-	  //Client worker1(grpc::CreateChannel(
-		//host_name, grpc::InsecureChannelCredentials()));
-  }
   else if(argc == 3)//restart as empty
   {
 	string host_name = (string)argv[2];
