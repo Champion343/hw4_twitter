@@ -1356,6 +1356,7 @@ void reconnect(string host_name)
 	while(!conn)
 	if(worker.Buffer())
 	{
+		cout << myPort  << " look for buffer\n";
 		conn = true;
 	}
 }
@@ -1370,8 +1371,9 @@ void checkMaster(string host_name)
 		if(!master.Ping() && conn)
 		{
 			conn = false;
-			 
+			 cout << myPort  << " start reconnect thread\n";
 			thread serveroff(reconnect,otherHosts2[0]);
+			serveroff.detach();
 		}
 	}
 	
@@ -1406,7 +1408,10 @@ int main(int argc, char** argv)
   //cout << myPort  << "agrv1" << argv[1] << endl;
   //cout << myPort  << "agrv2" << argv[2] << endl;
   //cout << myPort  << "agrv3" << argv[3] << endl;
+  other_Workers(myPort, &otherHosts);
+  assigned_Worker(myPort, &otherHosts1, &otherHosts2);
   thread ping(checkMaster,"128.194.143.156:50031");
+  ping.detach();
   if(argc == 4)
   {
 	  server_address = "0.0.0.0:"+(string)argv[0];
@@ -1420,13 +1425,13 @@ int main(int argc, char** argv)
   else if(argc == 2)
   {
 	  cout << "worker 4 initial start\n";
-	  server_address = "0.0.0.0:"+(string)argv[0];
-	  myPort = atoi(argv[0]);
+	  server_address = "0.0.0.0:50038";
+	  myPort = 50038;
 	  other_Workers(myPort, &otherHosts);
 	  assigned_Worker(myPort, &otherHosts1, &otherHosts2);
 	  RunServer(server_address);
   }
-  else if(argc == 3)//restart as empty
+  else if(argc == 12 || 3)//restart as empty
   {
 	cout << "worker 4 restart\n";
 	server_address = "0.0.0.0:"+(string)argv[0];
