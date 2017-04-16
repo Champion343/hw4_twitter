@@ -15,15 +15,13 @@ int main()
 		{
 			cout << getpid() << " replica pid" << endl;
 			execl("./master","50034","0");
-			if(fork() == 0){
-				cout << getpid() << " worker 4 pid" << endl;
-				execl("./fbsd","50040");
-			}
 		}
 		else //parent
 		{
 			cout << getpid() << " replica pid" << endl;
 			execl("./master","50033","0");
+			if(fork()==0)
+				execl("./fbsd","50038");
 		}
 	}
 }

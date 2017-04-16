@@ -310,7 +310,7 @@ void workerStatus(){
 			if(i == 4){
 				cout << "restarting worker 4..." << endl;
 				if(fork() == 0){
-					execl("./fbsd","50038");
+					execl("./fbsd","50038", "128.194.143.215:50035");
 					kill (getpid(),SIGKILL);
 				}
 			}
