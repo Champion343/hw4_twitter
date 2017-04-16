@@ -40,6 +40,34 @@ Message MakeMessage(const std::string& username, const std::string& msg) {
   return m;
 }
 
+//Client object used for grpc calls
+class ClientPing {
+ public:
+  ClientPing(std::shared_ptr<Channel> channel)
+      : stub_(CRMasterServer::NewStub(channel)) {}
+
+  //ping host to check if chat should still be sent to that host
+  bool Ping() {
+    // Data we are sending to the server.
+    Request message;
+    // Container for the data we expect from the server.
+    Reply reply;
+    ClientContext context;
+
+    // The actual RPC.
+    Status status = stub_->Ping(&context, message, &reply);
+
+    // Act upon its status.
+    if (status.ok()) {
+      return true;
+    } else {
+      return false;
+    }
+  }
+   private:
+  std::unique_ptr<CRMasterServer::Stub> stub_;
+};
+
 //thread handles reading for bidirectional streaming
 void reading(shared_ptr<ClientReaderWriter<Message,Message>> stream)
 {
@@ -54,6 +82,8 @@ class Client {
  public:
   Client(std::shared_ptr<Channel> channel)
       : stub_(CRMasterServer::NewStub(channel)) {}
+  
+  bool pingBool = false;
   //~Client();
   //Login function send message containing username and receives response
   std::string Login(const std::string& user) {
@@ -147,7 +177,6 @@ class Client {
     ListReply reply;
 
     ClientContext context;
-
     // The actual RPC.
     Status status = stub_->List(&context, message, &reply);
 
@@ -159,9 +188,22 @@ class Client {
       return reply;
     }
   }
+  
+  void hostPing(string h){
+	  while(true){
+	  sleep(1);
+	  ClientPing cl(grpc::CreateChannel(
+      h, grpc::InsecureChannelCredentials()));
+	  bool a = cl.Ping();
+	  	if(hostPing(cliHost) == false){
+		  pingBool = true;
+		}
+	}
+  }
+  
   //Chat function opens a bidirectional stream to the server then sends
   //its username and begins reading and writing to the server
-   void Chat(const std::string& user){
+   void Chat(const std::string& user, const string& cliHost){
 	ClientContext context;
 	//bidirectional streaming
 	std::shared_ptr<ClientReaderWriter<Message,Message>> stream(stub_->Chat(&context));
@@ -179,6 +221,16 @@ class Client {
 	while(1){
     getline(cin, text);
 	client_message.set_msg(text);
+	thread pinger(hostPing,(string)cliHost);
+	if(pingBool == true){
+		pinger.join();
+		Client mast(grpc::CreateChannel(
+      "128.194.143.156:50031", grpc::InsecureChannelCredentials()));
+	  string r = mast.Connect();
+		  Client cli(grpc::CreateChannel(
+      r, grpc::InsecureChannelCredentials()));
+	  cli.Chat(user,r);
+	}
 	stream->Write(client_message);
 	}
 	//if we ever wanted an exit this would close the stream and exit Chat
@@ -286,7 +338,7 @@ int main(int argc, char** argv) {
 	  }
 	  //Calls chat function and enters chat mode
 	  else if(input == "CHAT"){
-		workerClient.Chat(client_name);
+		workerClient.Chat(client_name,host_name);
 	  }
 	  else
 		  cout << "Not a command..." << endl;
