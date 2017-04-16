@@ -52,6 +52,31 @@ int findName(string username, vector<string>* list)
 	return -1;
 }
 
+//Client object used for grpc calls
+class ClientM {
+ public:
+  ClientM(std::shared_ptr<Channel> channel)
+      : stub_(CRMasterServer::NewStub(channel)) {}
+	 
+	string Time() {
+	Reply reply;
+	Reply send;
+	ClientContext context;
+	// The actual RPC.
+	Status status = stub_->Time(&context, send, &reply);
+	// Act upon its status.
+	if (status.ok()) {
+	return reply.msg();
+	} else {
+	std::cout << myPort  << status.error_code() << ": " << status.error_message()
+			<< std::endl;
+	return "fail";
+	}
+  }
+   private:
+  std::unique_ptr<CRMasterServer::Stub> stub_;
+};
+  
 //a person's account
 struct Room
 {
@@ -81,9 +106,12 @@ struct Room
 			return false;
 		following.push_back(person);
 		//get the time H:M:S
-		now = time(0);
-		string date = ctime(&now);
-		string hms = date.substr(date.find(":") -2, date.find_last_of(":") +3 - (date.find(":") -2));
+		ClientM master(grpc::CreateChannel(
+				"128.194.143.156:50031", grpc::InsecureChannelCredentials()));
+		//now = time(0);
+		//string date = ctime(&now);
+		//string hms = date.substr(date.find(":") -2, date.find_last_of(":") +3 - (date.find(":") -2));
+		string hms = master.Time();
 		joinTime.push_back(hms);
 		return true;
 	}
@@ -614,7 +642,7 @@ class Client {
 		ClientContext context;
 
 		// The actual RPC.
-		Status status = stub_->Join(&context, msg, &reply);
+		Status status = stub_->Leave(&context, msg, &reply);
 
 		// Act upon its status.
 		if (status.ok()) {
@@ -1145,9 +1173,9 @@ class FBServiceImpl final : public CRMasterServer::Service
 			int foll = findName(chatRooms[index].following[j], &chatRooms);
 			file.open(chatRooms[foll].username + ".txt");
 			if(file.is_open())
-			cout << myPort  << "opened file for reading"<< endl;
+			cout << myPort  << "opened file for reading recent"<< endl;
 			else
-				cout << myPort  << "NO OPEN FILE for reading (╯°□°)╯︵ ┻━┻" << endl;//not necessarily an error
+				cout << myPort  << "NO OPEN FILE for reading recent (╯°□°)╯︵ ┻━┻" << endl;//not necessarily an error
 			//go thru current subscription's file
 			while(getline(file, line))
 			{
@@ -1176,9 +1204,9 @@ class FBServiceImpl final : public CRMasterServer::Service
 		//open file with truncation for writing
 		file.open(user + ".txt", fstream::out | fstream::trunc);
 		if(file.is_open())
-			cout << myPort  << "opened file for writing"<< endl;
+			cout << myPort  << "opened file for writing to self"<< endl;
 		else
-			cout << myPort  << "NO OPEN FILE for writing (╯°□°)╯︵ ┻━┻" << endl;
+			cout << myPort  << "NO OPEN FILE for writing to self(╯°□°)╯︵ ┻━┻" << endl;
 		string lineMsg;
 		time_t nowtime;
 		string date;
