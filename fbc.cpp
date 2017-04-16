@@ -77,13 +77,29 @@ void reading(shared_ptr<ClientReaderWriter<Message,Message>> stream)
 		
 	}
 }
+
+bool pingBool = false;
+
+  void hostPing(string h){
+	  bool boo = true;
+	  while(boo){
+	  sleep(1);
+	  ClientPing cl(grpc::CreateChannel(
+      h, grpc::InsecureChannelCredentials()));
+	  bool a = cl.Ping();
+	  	if(a == false){
+		  pingBool = true;
+		  boo = false;
+		}
+	}
+  }
+
 //Client object used for grpc calls
 class Client {
  public:
   Client(std::shared_ptr<Channel> channel)
       : stub_(CRMasterServer::NewStub(channel)) {}
   
-  bool pingBool = false;
   //~Client();
   //Login function send message containing username and receives response
   std::string Login(const std::string& user) {
@@ -169,6 +185,8 @@ class Client {
   }
     
 	
+
+  
     ListReply List(const std::string& user) {
     // Data we are sending to the server.
     Request message;
@@ -189,21 +207,10 @@ class Client {
     }
   }
   
-  void hostPing(string h){
-	  while(true){
-	  sleep(1);
-	  ClientPing cl(grpc::CreateChannel(
-      h, grpc::InsecureChannelCredentials()));
-	  bool a = cl.Ping();
-	  	if(hostPing(cliHost) == false){
-		  pingBool = true;
-		}
-	}
-  }
-  
   //Chat function opens a bidirectional stream to the server then sends
   //its username and begins reading and writing to the server
-   void Chat(const std::string& user, const string& cliHost){
+   void Chat(const std::string& user,string cliHost){
+	pingBool = false;
 	ClientContext context;
 	//bidirectional streaming
 	std::shared_ptr<ClientReaderWriter<Message,Message>> stream(stub_->Chat(&context));
@@ -217,13 +224,13 @@ class Client {
 	client_message.set_username(user);
 	//send initial message declaring username
 	stream->Write(client_message);
+	thread pinger(hostPing,cliHost);
 	//loop through requesting user input and send message to server
 	while(1){
     getline(cin, text);
 	client_message.set_msg(text);
-	thread pinger(hostPing,(string)cliHost);
 	if(pingBool == true){
-		pinger.join();
+		pingBool = false;
 		Client mast(grpc::CreateChannel(
       "128.194.143.156:50031", grpc::InsecureChannelCredentials()));
 	  string r = mast.Connect();
