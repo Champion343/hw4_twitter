@@ -1419,6 +1419,7 @@ int main(int argc, char** argv)
   } 
   else if(argc == 2)
   {
+	  cout << "worker 4 initial start\n";
 	  server_address = "0.0.0.0:"+(string)argv[0];
 	  myPort = atoi(argv[0]);
 	  other_Workers(myPort, &otherHosts);
@@ -1427,12 +1428,16 @@ int main(int argc, char** argv)
   }
   else if(argc == 3)//restart as empty
   {
-	string host_name = (string)argv[2];
+	cout << "worker 4 restart\n";
+	server_address = "0.0.0.0:"+(string)argv[0];
+	myPort = atoi(argv[0]);
+	other_Workers(myPort, &otherHosts);
+	assigned_Worker(myPort, &otherHosts1, &otherHosts2);
+	string host_name = (string)argv[1];
 	Client worker(grpc::CreateChannel(
 		host_name, grpc::InsecureChannelCredentials()));
 	Request msg;
 	int i=0;
-	myPort = atoi(argv[1]);
 	while(1)
 	{
 		msg.set_username(to_string(i));
