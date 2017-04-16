@@ -287,6 +287,8 @@ void resetWorker(string host_name, string reset_addr){
 void workerStatus(){
 	string workerHosts[7] = {"128.194.143.215:50035","128.194.143.215:50036","128.194.143.215:50037","0.0.0.0:50038",
 					  "128.194.143.213:50039","128.194.143.213:50040","128.194.143.213:50041"};
+	string workerHosts1[7] = {"0.0.0.0:50035","0.0.0.0:50036","0.0.0.0:50037","0.0.0.0:50038",
+					  "0.0.0.0:50039","0.0.0.0:50040","0.0.0.0:50041"};
 	bool workerStates[7] = {true,true,true,true,true,true,true};
 	while(true){
 	cout << "checking Workers..." << endl;
@@ -297,13 +299,13 @@ void workerStatus(){
 			workerStates[i-1] = false;
 			cout << "Resetting worker: " << i << "..."<<endl;
 			if(i == 1){
-			resetWorker(workerHosts[i],workerHosts[i-1]);
+			resetWorker(workerHosts[i],workerHosts1[i-1]);
 			}
 			if(i == 2){
-			resetWorker(workerHosts[i],workerHosts[i-1]);
+			resetWorker(workerHosts[i],workerHosts1[i-1]);
 			}
 			if(i == 3){
-			resetWorker(workerHosts[i-3],workerHosts[i-1]);
+			resetWorker(workerHosts[i-3],workerHosts1[i-1]);
 			}
 			if(i == 4){
 				cout << "restarting worker 4..." << endl;
@@ -313,13 +315,13 @@ void workerStatus(){
 				}
 			}
 			if(i == 5){
-			resetWorker(workerHosts[i],workerHosts[i-1]);
+			resetWorker(workerHosts[i],workerHosts1[i-1]);
 			}
 			if(i == 6){
-			resetWorker(workerHosts[i],workerHosts[i-1]);
+			resetWorker(workerHosts[i],workerHosts1[i-1]);
 			}
 			if(i == 7){
-			resetWorker(workerHosts[i-3],workerHosts[i-1]);
+			resetWorker(workerHosts[i-3],workerHosts1[i-1]);
 			}
 		} else{
 			workerStates[i-1] = true;
